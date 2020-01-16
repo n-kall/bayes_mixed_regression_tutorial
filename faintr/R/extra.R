@@ -160,13 +160,14 @@ independent_variables  <- strsplit(x = gsub(pattern = "\\(.*\\|.*\\)",
 
 
 
+iris_tibble  <- iris %>%
+    mutate(Species = factor(Species))
 
-
-test_model <- brm(Sepal.Width ~ Species, data = iris)
+test_model <- brm(Sepal.Width ~ Species, data = iris_tibble)
 
 
                                         # extract variables names
-extract_var_names <- function(x) {
+get_independent_vars <- function(x) {
     if (is.brmsfit(x) == T) {
         formula <- x[["formula"]]
     } else if (is.brmsformula(x) == T) {
@@ -174,9 +175,15 @@ extract_var_names <- function(x) {
     }
     vars <- parse_bf(formula)[["allvars"]] %>%
         str_split(" ~ ", simplify = T)
-    dependent_var <- vars[2, 1]
+#    dependent_var <- vars[2, 1]
     independent_vars <- str_split(vars[[3, 1]], " \\+ ")[[1]]
     independent_vars <- independent_vars[2:length(independent_vars)]
-    print(dependent_var)
-    print(independent_vars)
+    return(independent_vars)
+}
+
+get_factors <- function(x, iv) {
+    factors <- model.frame(x) %>%
+        select_if(is.factor) %>%
+        names
+    return(factors)
 }
