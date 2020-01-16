@@ -1,0 +1,4 @@
+* use hypothesis()
+* check https://rdrr.io/cran/brms/src/R/marginal_effects-helpers.R
+* check tidybayes e.g. gather_draws
+* check sjstats
