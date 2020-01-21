@@ -161,29 +161,51 @@ independent_variables  <- strsplit(x = gsub(pattern = "\\(.*\\|.*\\)",
 
 
 iris_tibble  <- iris %>%
-    mutate(Species = factor(Species))
+    mutate(Species = factor(Species),
+           Sepal.Length = ordered(Sepal.Length))
 
-test_model <- brm(Sepal.Width ~ Species, data = iris_tibble)
+test_model <- brm(Sepal.Width ~ Species + mo(Sepal.Length), data = iris_tibble)
 
 
-                                        # extract variables names
-get_independent_vars <- function(x) {
-    if (is.brmsfit(x) == T) {
-        formula <- x[["formula"]]
-    } else if (is.brmsformula(x) == T) {
-        formula <- x
-    }
+get_variables <- function(model) {
+    # list all independent variables by parsing the brms formula
+
+    # extract formula from fit
+    formula <- model[["formula"]]
+
+    # extract all variables from fit and remove tilde
     vars <- parse_bf(formula)[["allvars"]] %>%
-        str_split(" ~ ", simplify = T)
-#    dependent_var <- vars[2, 1]
-    independent_vars <- str_split(vars[[3, 1]], " \\+ ")[[1]]
-    independent_vars <- independent_vars[2:length(independent_vars)]
-    return(independent_vars)
+        stringr::str_split(" ~ ", simplify = T)
+
+    # split predictors and remove pluses
+    predictors <- stringr::str_split(vars[[3, 1]], " \\+ ")[[1]]
+    predictors <- predictors[2:length(predictors)]
+    
+    return(list(predicted = vars[[2, 1]],
+                predictors = predictors))
 }
 
-get_factors <- function(x, iv) {
-    factors <- model.frame(x) %>%
+get_factor_predictors <- function(model) {
+    # return independent variables that are factors and their levels
+
+    variables <- get_variables(model)
+
+    predictors <- variables[["predictors"]]
+
+    # data that the model was fit on
+    data <- stats::model.frame(model)
+
+    # get vector of names of factor predictors
+    factor_predictors <- data %>%
+        select(predictors) %>%
         select_if(is.factor) %>%
-        names
-    return(factors)
+        names()
+
+    # output levels for each of the predictor factors
+    factor_levels <- list()
+    for (fac in factor_predictors) {
+        factor_levels[[fac]] <- levels(data[[fac]])
+    }
+
+    return(factor_levels)
 }
