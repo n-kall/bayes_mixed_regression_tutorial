@@ -14,7 +14,6 @@ get_variables <- function(model) {
     # split predictors and remove pluses
     predictors <- stringr::str_split(vars[[3, 1]], " \\+ ")[[1]] %>%
         str_split("\\:")
-    print(predictors)
     predictors <- predictors[2:length(predictors)] %>%
         unlist() %>%
         unique()
@@ -53,68 +52,45 @@ get_factor_information <- function(model) {
     return(factor_info)
 }
 
+
+make_combination <- function(factor_values, factor_info) {
+    
+    combination <- ""
+    ref_count = 0    
+    for (fct in names(factor_values)) {
+                                        # check for reference level
+        if (factor_info[[fct]]$reference == factor_values[[fct]]) {
+            ref_count  <- ref_count + 1
+            factor_str <- ""
+        } else {
+            factor_str <- paste0(fct, factor_values[[fct]])
+        }
+        
+        if (length(factor_values) > 1) {
+            combination <- paste(factor_str, combination, sep = ":")
+        } else {
+            combination <- paste0(factor_str, combination)
+        }
+    }
+    
+    if (ref_count == length(factor_values)) {
+        parameter_str <- "Intercept"
+    } else if (length(factor_values) > 1) {
+       # remove the trailing colon
+        combination  <- combination %>%
+            str_remove(":*$") %>%
+            str_remove("^:*")       
+    }
+}
+
+
 compare_cells <- function(model, higher, lower, alpha = 0.05) {
 
     factor_info <- get_factor_information(model)
 
-    higher_str <- ""
-    higher_ref_count = 0
+    higher_str <- make_combination(higher, factor_info)
     
-    for (fct in names(higher)) {
-        # check for reference level
-        if (factor_info[[fct]]$reference == higher[[fct]]) {
-            higher_ref_count  <- higher_ref_count + 1
-            factor_str <- ""
-        } else {
-            factor_str <- paste0(fct, higher[[fct]])
-        }
-        
-        if (length(higher) > 1) {
-            higher_str <- paste(factor_str, higher_str, sep = ":")
-        } else {
-            higher_str <- paste0(factor_str, higher_str)
-        }
-    }
-
-    
-    if (higher_ref_count == length(higher)) {
-        higher_str <- "Intercept"
-    } else if (length(higher) > 1) {
-        # remove the trailing colon
-        higher_str  <- higher_str %>%
-            str_replace(":*$", "")
-
-    }
-
-
-    lower_str <- ""
-    lower_ref_count = 0
-    
-    for (fct in names(lower)) {
-        # check for reference level
-        if (factor_info[[fct]]$reference == lower[[fct]]) {
-            lower_ref_count  <- lower_ref_count + 1
-            factor_str <- ""
-        } else {
-            factor_str <- paste0(fct, lower[[fct]])
-        }
-        
-        if (length(lower) > 1) {
-            lower_str <- paste(factor_str, lower_str, sep = ":")
-        } else {
-            lower_str <- paste0(factor_str, lower_str)
-        }
-    }
-
-    
-    if (lower_ref_count == length(lower)) {
-        lower_str <- "Intercept"
-    } else if (length(lower) > 1) {
-        # remove the trailing colon
-        lower_str  <- lower_str %>%
-            str_replace(":*$", "")
-
-    }
+    lower_str <- make_combination(lower, factor_info)
 
     brms::hypothesis(model, paste(higher_str, ">", lower_str), alpha = alpha)
 }
