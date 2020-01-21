@@ -1,13 +1,6 @@
 library(brms)
 library(tidyverse)
 
-iris_tibble  <- iris %>%
-    mutate(Species = factor(Species),
-           Sepal.Length = ordered(Sepal.Length))
-
-test_model <- brm(Sepal.Width ~ Species + Sepal.Length, data = iris_tibble)
-
-
 get_variables <- function(model) {
     # list all independent variables by parsing the brms formula
 
@@ -19,8 +12,12 @@ get_variables <- function(model) {
         stringr::str_split(" ~ ", simplify = T)
 
     # split predictors and remove pluses
-    predictors <- stringr::str_split(vars[[3, 1]], " \\+ ")[[1]]
-    predictors <- predictors[2:length(predictors)]
+    predictors <- stringr::str_split(vars[[3, 1]], " \\+ ")[[1]] %>%
+        str_split("\\:")
+    print(predictors)
+    predictors <- predictors[2:length(predictors)] %>%
+        unlist() %>%
+        unique()
     
     return(list(predicted = vars[[2, 1]],
                 predictors = predictors))
@@ -61,43 +58,63 @@ compare_cells <- function(model, higher, lower, alpha = 0.05) {
     factor_info <- get_factor_information(model)
 
     higher_str <- ""
-
-    higher_intercept = FALSE
+    higher_ref_count = 0
     
     for (fct in names(higher)) {
-                                        # check for reference level
-        
+        # check for reference level
         if (factor_info[[fct]]$reference == higher[[fct]]) {
-            higher_intercept = TRUE
+            higher_ref_count  <- higher_ref_count + 1
             factor_str <- ""
         } else {
-            higher_intercept = FALSE
             factor_str <- paste0(fct, higher[[fct]])
-            }
-
-        if (higher_intercept == TRUE) {
-            higher_str <- "Intercept"
+        }
+        
+        if (length(higher) > 1) {
+            higher_str <- paste(factor_str, higher_str, sep = ":")
         } else {
-            
-            if (length(higher) > 1) {
-                higher_str <- paste(higher_str, factor_str, sep = ":")
-            } else {
-                higher_str <- paste0(higher_str, factor_str)
-            }       
+            higher_str <- paste0(factor_str, higher_str)
         }
     }
+
+    
+    if (higher_ref_count == length(higher)) {
+        higher_str <- "Intercept"
+    } else if (length(higher) > 1) {
+        # remove the trailing colon
+        higher_str  <- higher_str %>%
+            str_replace(":*$", "")
+
+    }
+
 
     lower_str <- ""
-    for (fct in names(higher)) {
-        factor_str <- paste0(fct, lower[[fct]])
-        if (length(lower) > 1) {
-            lower_str <- paste(lower_str, factor_str, sep = ":")
+    lower_ref_count = 0
+    
+    for (fct in names(lower)) {
+        # check for reference level
+        if (factor_info[[fct]]$reference == lower[[fct]]) {
+            lower_ref_count  <- lower_ref_count + 1
+            factor_str <- ""
         } else {
-            lower_str <- paste0(lower_str, factor_str)
+            factor_str <- paste0(fct, lower[[fct]])
+        }
+        
+        if (length(lower) > 1) {
+            lower_str <- paste(factor_str, lower_str, sep = ":")
+        } else {
+            lower_str <- paste0(factor_str, lower_str)
         }
     }
 
+    
+    if (lower_ref_count == length(lower)) {
+        lower_str <- "Intercept"
+    } else if (length(lower) > 1) {
+        # remove the trailing colon
+        lower_str  <- lower_str %>%
+            str_replace(":*$", "")
 
-    print(paste(higher_str, ">", lower_str))
+    }
+
     brms::hypothesis(model, paste(higher_str, ">", lower_str), alpha = alpha)
 }
