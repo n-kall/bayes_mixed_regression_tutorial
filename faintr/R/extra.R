@@ -54,11 +54,11 @@ get_factor_information <- function(model) {
 
 
 make_combination <- function(factor_values, factor_info) {
-    
+    # create a string for the combination of factor levels
     combination <- ""
     ref_count = 0    
     for (fct in names(factor_values)) {
-                                        # check for reference level
+        # check for reference level
         if (factor_info[[fct]]$reference == factor_values[[fct]]) {
             ref_count  <- ref_count + 1
             factor_str <- ""
@@ -85,6 +85,7 @@ make_combination <- function(factor_values, factor_info) {
 
 
 compare_cells <- function(model, higher, lower, alpha = 0.05) {
+    # create factor combination strings and run hypothesis
 
     factor_info <- get_factor_information(model)
 
