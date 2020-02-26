@@ -127,9 +127,9 @@ compare_cells <- function(model, higher, lower, alpha = 0.05) {
 
     factor_info <- get_factor_information(model)
 
-    higher_str <- make_combination(higher, factor_info)
+    higher_str <- make_cell_string(higher, factor_info)
     
-    lower_str <- make_combination(lower, factor_info)
+    lower_str <- make_cell_string(lower, factor_info)
 
     brms::hypothesis(model, paste(higher_str, ">", lower_str), alpha = alpha)
 }
