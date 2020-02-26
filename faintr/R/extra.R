@@ -101,15 +101,16 @@ make_cell_string <- function(factor_values, factor_info) {
             combination <- paste0(factor_str, combination)
         }
     }
-    
+    # TODO: what about factors not specified? need to average over those levels rather than assuming reference level
     if (ref_count == length(factor_values)) {
-        parameter_str <- "Intercept"
+        combination <- "Intercept"
     } else if (length(factor_values) > 1) {
        # remove the trailing colon
         combination  <- combination %>%
-            str_remove(":*$") %>%
-            str_remove("^:*")       
+            stringr::str_remove(":*$") %>%
+            stringr::str_remove("^:*")       
     }
+    return(combination)
 }
 
 ##' .. content for \description{} (no empty lines) ..

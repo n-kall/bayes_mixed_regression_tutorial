@@ -1,0 +1,3 @@
+factor_info <- list(factor1 = list(levels = c("A", "B", "C"), reference = "B"), factor2 = list(levels = c("X", "Y", "Z"), reference = "X"))
+
+faintr::
