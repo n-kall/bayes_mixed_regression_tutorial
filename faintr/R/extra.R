@@ -1,6 +1,16 @@
-library(brms)
-library(tidyverse)
-
+#' Obtaining variable names from a brms model
+#'
+#' For a model for a factorial design, fitted with brms, this function returns the names of the independent variables.
+#' For more information see \code{vignette('faintr_basics')}.
+#' @param model Model fit from brms package.
+#' @keywords regression, factorial design, brms
+#' @import tidyverse brms
+#' @export
+#' @return list with names of the independent variables
+#' @examples
+#' library(brms)
+#' m <- brm(yield ~ N * P * K, npk)
+#' get_variables(m)
 get_variables <- function(model) {
     # list all independent variables by parsing the brms formula
 
@@ -22,6 +32,19 @@ get_variables <- function(model) {
                 predictors = predictors))
 }
 
+#' Obtaining information about factors in regression model
+#'
+#' For a model for a factorial design, fitted with brms, this function returns information about the factors used, their levels, and the reference levels.
+#' For more information see \code{vignette('faintr_basics')}.
+#' @param model Model fit from brms package.
+#' @keywords regression, factorial design, brms
+#' @import tidyverse brms
+#' @export
+#' @return list with names of factors and their levels, including the reference levels (in dummy coding)
+#' @examples
+#' library(brms)
+#' m <- brm(yield ~ N * P * K, npk)
+#' get_factor_information(m)
 get_factor_information <- function(model) {
     # return independent variables that are factors and their levels
 
@@ -52,8 +75,14 @@ get_factor_information <- function(model) {
     return(factor_info)
 }
 
-
-make_combination <- function(factor_values, factor_info) {
+##' Create string combining factor levels
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param factor_values named list specifying which levels of each factor to combine
+##' @param factor_info list with names of factors and their levels, including the reference levels (in dummy coding)
+##' @return string specifying levels of factors to be combined into a cell 
+make_cell_string <- function(factor_values, factor_info) {
     # create a string for the combination of factor levels
     combination <- ""
     ref_count = 0    
@@ -83,7 +112,15 @@ make_combination <- function(factor_values, factor_info) {
     }
 }
 
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param model model of type brmsfit
+##' @param higher named list specifying levels of factors that specify the cell to give a higher dependent variable value
+##' @param lower named list specifying levels of factors that specify the cell to give a lower dependent variable value
+##' @param alpha level of probability
+##' @return 
 compare_cells <- function(model, higher, lower, alpha = 0.05) {
     # create factor combination strings and run hypothesis
 
