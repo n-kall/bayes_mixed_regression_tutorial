@@ -89,17 +89,17 @@ make_cell_string <- function(factor_values, factor_info) {
                                         # check for reference level
         if (factor_info[[fct]]$reference != factor_values[[fct]]) {
             factor_level_strings <- c(factor_level_strings,
-                                      paste0("+ ", fct, factor_values[[fct]]))
+                                      paste0(fct, factor_values[[fct]]))
             }
     }
     interaction_strings <- c()
     for (fct in factor_level_strings) {
         for (f in factor_level_strings) {
-            print(paste0(fct, ":", f))
+            interaction_strings <- c(interaction_strings, paste0(fct, ":", f))
 
         }
     }
-        cell_str <- paste("Intercept", factor_level_strings)
+        cell_str <- paste(c("Intercept", factor_level_strings, interaction_strings), collapse = " + ")
     }
         # interactions
 
