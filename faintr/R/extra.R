@@ -89,13 +89,14 @@ make_cell_string <- function(factor_values, factor_info) {
     interaction_strings <- c()
 
     for (fct in names(factor_values)) {
-                                        # check for reference level
+        # check for reference level
         if (factor_info[[fct]]$reference != factor_values[[fct]]) {
             factor_level_strings <- c(factor_level_strings,
                                       paste0(fct, factor_values[[fct]]))
         }
     }
 
+    # add interaction terms
     if (length(factor_level_strings) > 1) {
         for (i in 2:length(factor_level_strings)) {
             interactions <- c(interactions, combn(factor_level_strings, m = i, simplify = F))
