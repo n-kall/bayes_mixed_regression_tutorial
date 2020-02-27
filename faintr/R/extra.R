@@ -4,8 +4,7 @@
 #' For more information see \code{vignette('faintr_basics')}.
 #' @param model Model fit from brms package.
 #' @keywords regression, factorial design, brms
-#' @import tidyverse brms
-#' @export
+#' @import brms stringr
 #' @return list with names of the independent variables
 #' @examples
 #' library(brms)
@@ -46,8 +45,7 @@ get_variables <- function(model) {
 #' For more information see \code{vignette('faintr_basics')}.
 #' @param model Model fit from brms package.
 #' @keywords regression, factorial design, brms
-#' @import brms
-#' @export
+#' @import dplyr
 #' @return list with names of factors and their levels, including the reference levels (in dummy coding)
 #' @examples
 #' library(brms)
@@ -86,12 +84,14 @@ get_factor_information <- function(model) {
 ##' Create string combining factor levels
 ##'
 ##' Given a specification of factor levels, this function creates as string corresponding the formula for that cell in the design matrix.
-##' @title 
+##' @title
+##' @import dplyr
 ##' @param factor_values named list specifying which levels of each factor to combine
 ##' @param factor_info list with names of factors and their levels, including the reference levels (in dummy coding)
 ##' @return string specifying levels of factors to be combined into a cell 
 make_cell_string <- function(factor_values, factor_info) {
     # create a string for the combination of factor levels
+    # and one for interaction terms
     factor_level_strings <- c()
     interactions <- c()
     interaction_strings <- c()
@@ -123,14 +123,29 @@ make_cell_string <- function(factor_values, factor_info) {
 
 #' Compare means of two subsets of factorial design cells
 #'
-#' This function takes a brms model fit for a factorial design and a specification of two groups (subsets of design cells) to compare. 
-#' A group is specified as a named list, specifiying the factors and their levels which to include in the group.
-#' It outputs the posterior mean of the 'higher' minus the 'lower' subset of cells, its 95 percent credible interval and the posterior probability that the 'higher' group has a higher mean than the the 'lower' group.
-##' @param model a brmsfit
-##' @param higher named list specifying levels of factors that specify the cell hypothesised to yield a higher dependent variable value
-##' @param lower named list specifying levels of factors that specify the cell hypothesised to yield a lower dependent variable value
-##' @param alpha level of probability
-##' @return 
+#' This function takes a brms model fit for a factorial design and a
+#' specification of two groups (subsets of design cells) to compare.
+#' A group is specified as a named list, specifiying the factors and
+#' their levels which to include in the group.  It outputs the
+#' posterior mean of the 'higher' minus the 'lower' subset of cells,
+#' its 95 percent credible interval and the posterior probability that
+#' the 'higher' group has a higher mean than the the 'lower' group.
+#'
+#' @param model a brmsfit
+#' @param higher named list specifying levels of factors that specify
+#'     the cell hypothesised to yield a higher dependent variable
+#'     value
+#' @param lower named list specifying levels of factors that specify
+#'     the cell hypothesised to yield a lower dependent variable value
+#' @param alpha level of probability
+#' @return a brmshypothesis object corresponding to the hypothesis of
+#'     "higher > lower"
+#' @examples
+#' m <- brm(yield ~ N * P * K, npk)
+#' compare_cells(model = m,
+#'               lower = c(N = 0, P = 0, K = 0),
+#'               higher = c(N = 1, P = 1, K = 1))
+#' @export
 compare_cells <- function(model, higher, lower, alpha = 0.05) {
     # create factor combination strings and run hypothesis
 
