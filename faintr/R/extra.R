@@ -85,52 +85,33 @@ get_factor_information <- function(model) {
 make_cell_string <- function(factor_values, factor_info) {
     # create a string for the combination of factor levels
     factor_level_strings <- c()
+    interactions <- c()
+    interaction_strings <- c()
+
     for (fct in names(factor_values)) {
                                         # check for reference level
         if (factor_info[[fct]]$reference != factor_values[[fct]]) {
             factor_level_strings <- c(factor_level_strings,
                                       paste0(fct, factor_values[[fct]]))
-            }
-    }
-    interaction_strings <- c()
-    for (fct in factor_level_strings) {
-        for (f in factor_level_strings) {
-            interaction_strings <- c(interaction_strings, paste0(fct, ":", f))
-
         }
     }
-        cell_str <- paste(c("Intercept", factor_level_strings, interaction_strings), collapse = " + ")
-    }
-        # interactions
 
-        
-    ## ref_count = 0    
-    ## for (fct in names(factor_values)) {
-    ##     factor_str <- ""
-    ##     # check for reference level
-    ##     if (factor_info[[fct]]$reference == factor_values[[fct]]) {
-    ##         ref_count  <- ref_count + 1
-    ##     } else {
-    ##         factor_str <- paste0(fct, factor_values[[fct]])
-    ##     }
-        
-    ##     if (length(factor_values) > 1) {
-    ##         combination  <- paste(factor_str, combination, sep = " + ")
-    ##         combination <- paste(factor_str, combination, sep = ":")
-    ##     } else {
-    ##         combination <- paste0(factor_str, combination)
-    ##     }
+    if (length(factor_level_strings) > 1) {
+        for (i in 2:length(factor_level_strings)) {
+            interactions <- c(interactions, combn(factor_level_strings, m = i, simplify = F))
+        }
+        for (i in 1:length(interactions)) {
+            interaction_strings <- c(interaction_strings, str_c(interactions[[i]], collapse = ":"))
+            }
+    } else {
+        interactions_strings  <- ""
     }
-    # TODO: what about factors not specified? need to average over those levels rather than assuming reference level
-    ## if (ref_count == length(factor_values)) {
-    ##     combination <- "Intercept"
-    ## } else if (length(factor_values) > 1) {
-    ##    # remove the trailing colon
-    ##     combination  <- combination %>%
-    ##         stringr::str_remove(":*$") %>%
-    ##         stringr::str_remove("^:*")
-    ##     combination <- paste("Intercept +", combination)
-    ## }
+    
+    cell_str <- paste(c("Intercept", factor_level_strings, interaction_strings), collapse = " + ")
+     # TODO: what about factors not specified? need to average over
+     # those levels rather than assuming reference level
+}
+
 
 ##' .. content for \description{} (no empty lines) ..
 ##'
@@ -146,12 +127,11 @@ compare_cells <- function(model, higher, lower, alpha = 0.05) {
 
     factor_info <- get_factor_information(model)
 
-    higher_str <- make_cell_string(higher, factor_info)
-    
     lower_str <- make_cell_string(lower, factor_info)
 
-    hyp <- paste(higher_str, ">", lower_str)
-    print("TEST")
-    print(hyp)
-  #  brms::hypothesis(x = model, hypothesis = hyp, alpha = alpha)
+    higher_str <- make_cell_string(higher, factor_info)    
+
+    hyp <- paste(lower_str, "<", higher_str)
+    print(paste("Hypothesis to test:", hyp))
+    brms::hypothesis(x = model, hypothesis = hyp, alpha = alpha)
 }
