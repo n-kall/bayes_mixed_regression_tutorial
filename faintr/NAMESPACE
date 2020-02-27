@@ -3,6 +3,7 @@
 S3method(print,faintCompare)
 export(compare_groups)
 export(get_factor_information)
+export(get_variables)
 export(post_cells)
 import(brms)
 import(tidyverse)

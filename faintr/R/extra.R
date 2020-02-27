@@ -49,7 +49,7 @@ get_variables <- function(model) {
 #' @return list with names of factors and their levels, including the reference levels (in dummy coding)
 #' @examples
 #' library(brms)
-#' m <- brm(yield ~ N * P * K, npk)
+#' m <- brm(pitch ~ gender * context, politeness)
 #' get_factor_information(m)
 get_factor_information <- function(model) {
     # return independent variables that are factors and their levels
@@ -59,10 +59,10 @@ get_factor_information <- function(model) {
     predictors <- variables[["predictors"]]
 
     # data that the model was fit on
-    data <- stats::model.frame(model)
+    d <- stats::model.frame(model)
 
     # get vector of names of factor predictors
-    factor_predictors <- data %>%
+    factor_predictors <- d %>%
         select(predictors) %>%
         select_if(is.factor) %>%
         names()
@@ -70,7 +70,7 @@ get_factor_information <- function(model) {
     # output levels for each of the predictor factors
     factor_info <- list()
     for (fac in factor_predictors) {
-        lvls <- levels(data[[fac]])
+        lvls <- levels(d[[fac]])
         ref_lvl <- lvls[1]
         factor_levels <- list(levels = lvls,
                               reference = ref_lvl)
@@ -88,7 +88,7 @@ get_factor_information <- function(model) {
 ##' @import dplyr
 ##' @param factor_values named list specifying which levels of each factor to combine
 ##' @param factor_info list with names of factors and their levels, including the reference levels (in dummy coding)
-##' @return string specifying levels of factors to be combined into a cell 
+##' @return string specifying levels of factors to be combined into a cell
 make_cell_string <- function(factor_values, factor_info) {
     # create a string for the combination of factor levels
     # and one for interaction terms
@@ -141,10 +141,11 @@ make_cell_string <- function(factor_values, factor_info) {
 #' @return a brmshypothesis object corresponding to the hypothesis of
 #'     "higher > lower"
 #' @examples
-#' m <- brm(yield ~ N * P * K, npk)
+#' m <- brm(pitch ~ gender * context, politeness)
 #' compare_cells(model = m,
-#'               lower = c(N = 0, P = 0, K = 0),
-#'               higher = c(N = 1, P = 1, K = 1))
+#'               lower = c(gender = "M", context = "inf"),
+#'               higher = c(gender = "F", context = "pol"),
+#'               alpha = 0.1)
 #' @export
 compare_cells <- function(model, higher, lower, alpha = 0.05) {
     # create factor combination strings and run hypothesis
