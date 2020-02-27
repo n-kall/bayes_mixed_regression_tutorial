@@ -63,8 +63,8 @@ get_factor_information <- function(model) {
 
     # get vector of names of factor predictors
     factor_predictors <- d %>%
-        select(predictors) %>%
-        select_if(is.factor) %>%
+        dplyr::select(predictors) %>%
+        dplyr::select_if(is.factor) %>%
         names()
 
     # output levels for each of the predictor factors
