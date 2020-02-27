@@ -13,7 +13,6 @@
 #' get_variables(m)
 get_variables <- function(model) {
     # list all independent variables by parsing the brms formula
-
     # extract formula from fit
     formula <- model[["formula"]]
 
@@ -21,15 +20,24 @@ get_variables <- function(model) {
     vars <- parse_bf(formula)[["allvars"]] %>%
         stringr::str_split(" ~ ", simplify = T)
 
-    # split predictors and remove pluses
-    predictors <- stringr::str_split(vars[[3, 1]], " \\+ ")[[1]] %>%
-        str_split("\\:")
+    # split predictors and remove pluses and interaction terms
+    predictors <- stringr::str_split(vars[[3, 1]], " \\+ ")[[1]] 
+
+
+    # TODO: extracting interaction terms here to check which are actually
+    # encoded in the model
+    
+    interactions <- Filter(function(x) {grepl(":", x)}, predictors)
+
     predictors <- predictors[2:length(predictors)] %>%
+        stringr::str_split("\\:") %>%
         unlist() %>%
         unique()
+
     
     return(list(predicted = vars[[2, 1]],
-                predictors = predictors))
+                predictors = predictors,
+                interactions = interactions))
 }
 
 #' Obtaining information about factors in regression model
@@ -38,7 +46,7 @@ get_variables <- function(model) {
 #' For more information see \code{vignette('faintr_basics')}.
 #' @param model Model fit from brms package.
 #' @keywords regression, factorial design, brms
-#' @import tidyverse brms
+#' @import brms
 #' @export
 #' @return list with names of factors and their levels, including the reference levels (in dummy coding)
 #' @examples
@@ -77,7 +85,7 @@ get_factor_information <- function(model) {
 
 ##' Create string combining factor levels
 ##'
-##' .. content for \details{} ..
+##' Given a specification of factor levels, this function creates as string corresponding the formula for that cell in the design matrix.
 ##' @title 
 ##' @param factor_values named list specifying which levels of each factor to combine
 ##' @param factor_info list with names of factors and their levels, including the reference levels (in dummy coding)
@@ -102,7 +110,7 @@ make_cell_string <- function(factor_values, factor_info) {
             interactions <- c(interactions, combn(factor_level_strings, m = i, simplify = F))
         }
         for (i in 1:length(interactions)) {
-            interaction_strings <- c(interaction_strings, str_c(interactions[[i]], collapse = ":"))
+            interaction_strings <- c(interaction_strings, stringr::str_c(interactions[[i]], collapse = ":"))
             }
     } else {
         interactions_strings  <- ""
@@ -113,14 +121,14 @@ make_cell_string <- function(factor_values, factor_info) {
      # those levels rather than assuming reference level
 }
 
-
-##' .. content for \description{} (no empty lines) ..
-##'
-##' .. content for \details{} ..
-##' @title 
-##' @param model model of type brmsfit
-##' @param higher named list specifying levels of factors that specify the cell to give a higher dependent variable value
-##' @param lower named list specifying levels of factors that specify the cell to give a lower dependent variable value
+#' Compare means of two subsets of factorial design cells
+#'
+#' This function takes a brms model fit for a factorial design and a specification of two groups (subsets of design cells) to compare. 
+#' A group is specified as a named list, specifiying the factors and their levels which to include in the group.
+#' It outputs the posterior mean of the 'higher' minus the 'lower' subset of cells, its 95 percent credible interval and the posterior probability that the 'higher' group has a higher mean than the the 'lower' group.
+##' @param model a brmsfit
+##' @param higher named list specifying levels of factors that specify the cell hypothesised to yield a higher dependent variable value
+##' @param lower named list specifying levels of factors that specify the cell hypothesised to yield a lower dependent variable value
 ##' @param alpha level of probability
 ##' @return 
 compare_cells <- function(model, higher, lower, alpha = 0.05) {
