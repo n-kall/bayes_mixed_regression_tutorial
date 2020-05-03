@@ -1,7 +1,8 @@
 #' Obtaining variable names from a brms model
 #'
-#' For a model for a factorial design, fitted with brms, this function returns the names of the independent variables.
-#' For more information see \code{vignette('faintr_basics')}.
+#' For a model for a factorial design, fitted with brms, this function
+#' returns the names of the independent variables.  For more
+#' information see \code{vignette('faintr_basics')}.
 #' @param model Model fit from brms package.
 #' @keywords regression, factorial design, brms
 #' @import brms stringr
@@ -44,12 +45,15 @@ get_variables <- function(model) {
 
 #' Obtaining information about factors in regression model
 #'
-#' For a model for a factorial design, fitted with brms, this function returns information about the factors used, their levels, and the reference levels.
-#' For more information see \code{vignette('faintr_basics')}.
+#' For a model for a factorial design, fitted with brms, this function
+#' returns information about the factors used, their levels, and the
+#' reference levels.  For more information see
+#' \code{vignette('faintr_basics')}.
 #' @param model Model fit from brms package.
 #' @keywords regression, factorial design, brms
 #' @import dplyr
-#' @return list with names of factors and their levels, including the reference levels (in dummy coding)
+#' @return list with names of factors and their levels, including the
+#'   reference levels (in dummy coding)
 #' @examples
 #' library(brms)
 #' m <- brm(pitch ~ gender * context, politeness)
@@ -88,12 +92,17 @@ get_factor_information <- function(model) {
 
 ##' Create string combining factor levels
 ##'
-##' Given a specification of factor levels, this function creates as string corresponding the formula for that cell in the design matrix.
+##' Given a specification of factor levels, this function creates as
+##' string corresponding the formula for that cell in the design
+##' matrix.
 ##' @title
 ##' @import dplyr
-##' @param factor_values named list specifying which levels of each factor to combine
-##' @param factor_info list with names of factors and their levels, including the reference levels (in dummy coding)
-##' @return string specifying levels of factors to be combined into a cell
+##' @param factor_values named list specifying which levels of each
+##'   factor to combine
+##' @param factor_info list with names of factors and their levels,
+##'   including the reference levels (in dummy coding)
+##' @return string specifying levels of factors to be combined into a
+##'   cell
 make_cell_string <- function(factor_values, factor_info, pars) {
   # create a string for the combination of factor levels
   factor_level_strings <- c()
@@ -119,14 +128,13 @@ make_cell_string <- function(factor_values, factor_info, pars) {
     }
     for (i in 1:length(interactions)) {
       new_int_str <- stringr::str_c(interactions[[i]], collapse = ":")
-      print(interactions[[i]])
 
       # check if interaction is actually in model
       if (!(new_int_str %in% pars)) {
 
         # try reversing interaction
+        # TODO: try different permutations for 3-way interactions
         interactions[[i]] <- rev(interactions[[i]])
-        print(interactions[i])
         new_int_str <- stringr::str_c(interactions[[i]], collapse = ":")
 
         # check if reversed is actually in model
