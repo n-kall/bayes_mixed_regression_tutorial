@@ -2,7 +2,7 @@
 % Please edit documentation in R/extra.R
 \name{make_cell_string}
 \alias{make_cell_string}
-\title{}
+\title{Create a string corresponding to the cell in regression}
 \usage{
 make_cell_string(factor_values, factor_info)
 }
