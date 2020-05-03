@@ -11,32 +11,35 @@
 #' m <- brm(yield ~ N * P * K, npk)
 #' get_variables(m)
 get_variables <- function(model) {
-    # list all independent variables by parsing the brms formula
-    # extract formula from fit
-    formula <- model[["formula"]]
+  # list all independent variables by parsing the brms formula
+  # extract formula from fit
+  formula <- model[["formula"]]
 
-    # extract all variables from fit and remove tilde
-    vars <- parse_bf(formula)[["allvars"]] %>%
-        stringr::str_split(" ~ ", simplify = T)
+  # extract all variables from fit and remove tilde
+  vars <- brmsterms(formula)[["allvars"]] %>%
+    stringr::str_split(" ~ ", simplify = T)
 
-    # split predictors and remove pluses and interaction terms
-    predictors <- stringr::str_split(vars[[3, 1]], " \\+ ")[[1]] 
+  # split predictors and remove pluses and interaction terms
+  predictors <- stringr::str_split(vars[[3, 1]], " \\+ ")[[1]]
 
 
-    # TODO: extracting interaction terms here to check which are actually
-    # encoded in the model
-    
-    interactions <- Filter(function(x) {grepl(":", x)}, predictors)
+  # TODO: extracting interaction terms here to check which are actually
+  # encoded in the model
 
-    predictors <- predictors[2:length(predictors)] %>%
-        stringr::str_split("\\:") %>%
-        unlist() %>%
-        unique()
+  interactions <- Filter(function(x) grepl(":", x), predictors)
 
-    
-    return(list(predicted = vars[[2, 1]],
-                predictors = predictors,
-                interactions = interactions))
+  predictors <- predictors[2:length(predictors)] %>%
+    stringr::str_split("\\:") %>%
+    unlist() %>%
+    unique()
+
+  return(
+    list(
+      predicted = vars[[2, 1]],
+      predictors = predictors,
+      interactions = interactions
+    )
+  )
 }
 
 #' Obtaining information about factors in regression model
@@ -52,33 +55,35 @@ get_variables <- function(model) {
 #' m <- brm(pitch ~ gender * context, politeness)
 #' get_factor_information(m)
 get_factor_information <- function(model) {
-    # return independent variables that are factors and their levels
+  # return independent variables that are factors and their levels
 
-    variables <- get_variables(model)
+  variables <- get_variables(model)
 
-    predictors <- variables[["predictors"]]
+  predictors <- variables[["predictors"]]
 
-    # data that the model was fit on
-    d <- stats::model.frame(model)
+  # data that the model was fit on
+  d <- stats::model.frame(model)
 
-    # get vector of names of factor predictors
-    factor_predictors <- d %>%
-        dplyr::select(predictors) %>%
-        dplyr::select_if(is.factor) %>%
-        names()
+  # get vector of names of factor predictors
+  factor_predictors <- d %>%
+    dplyr::select(predictors) %>%
+    dplyr::select_if(is.factor) %>%
+    names()
 
-    # output levels for each of the predictor factors
-    factor_info <- list()
-    for (fac in factor_predictors) {
-        lvls <- levels(d[[fac]])
-        ref_lvl <- lvls[1]
-        factor_levels <- list(levels = lvls,
-                              reference = ref_lvl)
-        
-        factor_info[[fac]] <- factor_levels
-    }
+  # output levels for each of the predictor factors
+  factor_info <- list()
+  for (fac in factor_predictors) {
+    lvls <- levels(d[[fac]])
+    ref_lvl <- lvls[1]
+    factor_levels <- list(
+      levels = lvls,
+      reference = ref_lvl
+    )
 
-    return(factor_info)
+    factor_info[[fac]] <- factor_levels
+  }
+
+  return(factor_info)
 }
 
 ##' Create string combining factor levels
@@ -89,36 +94,48 @@ get_factor_information <- function(model) {
 ##' @param factor_values named list specifying which levels of each factor to combine
 ##' @param factor_info list with names of factors and their levels, including the reference levels (in dummy coding)
 ##' @return string specifying levels of factors to be combined into a cell
-make_cell_string <- function(factor_values, factor_info) {
-    # create a string for the combination of factor levels
-    # and one for interaction terms
-    factor_level_strings <- c()
-    interactions <- c()
-    interaction_strings <- c()
+make_cell_string <- function(factor_values, factor_info, by) {
+  # create a string for the combination of factor levels
+  # and one for interaction terms
+  factor_level_strings <- c()
+  interactions <- c()
+  interaction_strings <- c()
 
-    for (fct in names(factor_values)) {
-        # check for reference level
-        if (factor_info[[fct]]$reference != factor_values[[fct]]) {
-            factor_level_strings <- c(factor_level_strings,
-                                      paste0(fct, factor_values[[fct]]))
-        }
+  for (fct in names(factor_values)) {
+    # check for reference level
+    if (factor_info[[fct]]$reference != factor_values[[fct]]) {
+      factor_level_strings <- c(
+        factor_level_strings,
+        paste0(fct, factor_values[[fct]])
+      )
     }
+  }
 
-    # add interaction terms
-    if (length(factor_level_strings) > 1) {
-        for (i in 2:length(factor_level_strings)) {
-            interactions <- c(interactions, combn(factor_level_strings, m = i, simplify = F))
-        }
-        for (i in 1:length(interactions)) {
-            interaction_strings <- c(interaction_strings, stringr::str_c(interactions[[i]], collapse = ":"))
-            }
-    } else {
-        interactions_strings  <- ""
+  # add interaction terms
+  if (length(factor_level_strings) > 1) {
+    for (i in 2:length(factor_level_strings)) {
+      interactions <- c(interactions,
+                        combn(factor_level_strings, m = i, simplify = F))
     }
-    
-    cell_str <- paste(c("Intercept", factor_level_strings, interaction_strings), collapse = " + ")
-     # TODO: what about factors not specified? need to average over
-     # those levels rather than assuming reference level
+    for (i in 1:length(interactions)) {
+      interaction_strings <- c(
+        interaction_strings,
+        stringr::str_c(interactions[[i]], collapse = ":")
+      )
+    }
+  }
+
+  for (level in factor_info[[by]]$levels) {
+    print(level)
+
+  }
+
+
+  cell_str <- paste(c(
+    "Intercept",
+    factor_level_strings,
+    interaction_strings),
+    collapse = " + ")
 }
 
 #' Compare means of two subsets of factorial design cells
@@ -147,16 +164,34 @@ make_cell_string <- function(factor_values, factor_info) {
 #'               higher = c(gender = "F", context = "pol"),
 #'               alpha = 0.1)
 #' @export
-compare_cells <- function(model, higher, lower, alpha = 0.05) {
-    # create factor combination strings and run hypothesis
+compare_cells <- function(model, higher, lower, by, alpha = 0.05) {
+  # create factor combination strings and run hypothesis
 
-    factor_info <- get_factor_information(model)
+  factor_info <- get_factor_information(model)
 
+  # with by factor
+  if (!is.na(by)) {
+    hyps <- c()
+    for (lvl in factor_info[[by]]$levels) {
+      sub_lower <- c(lower, lvl)
+      names(sub_lower) <- c(names(lower), by)
+      lower_str <- make_cell_string(sub_lower, factor_info)
+
+      sub_higher <- c(higher, lvl)
+      names(sub_higher) <- c(names(higher), by)
+      higher_str <- make_cell_string(sub_higher, factor_info)
+
+      hyps <- c(hyps, paste(lower_str, "<", higher_str))
+    }
+    print(paste("Hypothesis to test:", hyps))
+    brms::hypothesis(x = model, hypothesis = hyps, alpha = alpha)
+
+    # no by factor
+  } else {
     lower_str <- make_cell_string(lower, factor_info)
-
-    higher_str <- make_cell_string(higher, factor_info)    
-
+    higher_str <- make_cell_string(higher, factor_info)
     hyp <- paste(lower_str, "<", higher_str)
     print(paste("Hypothesis to test:", hyp))
     brms::hypothesis(x = model, hypothesis = hyp, alpha = alpha)
+  }
 }
