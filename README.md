@@ -1,5 +1,6 @@
-# bayes_mixed_regression_tutorial
-Very basic tutorial on Bayesian mixed effects regression for factorial designs
+# faintr
+
+Analysing Factorial Interactions in bRms
 
 To obtain the `faintr` package type:
 
