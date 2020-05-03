@@ -94,12 +94,9 @@ get_factor_information <- function(model) {
 ##' @param factor_values named list specifying which levels of each factor to combine
 ##' @param factor_info list with names of factors and their levels, including the reference levels (in dummy coding)
 ##' @return string specifying levels of factors to be combined into a cell
-make_cell_string <- function(factor_values, factor_info, by) {
+make_cell_string <- function(factor_values, factor_info, pars) {
   # create a string for the combination of factor levels
-  # and one for interaction terms
   factor_level_strings <- c()
-  interactions <- c()
-  interaction_strings <- c()
 
   for (fct in names(factor_values)) {
     # check for reference level
@@ -111,25 +108,28 @@ make_cell_string <- function(factor_values, factor_info, by) {
     }
   }
 
+  
   # add interaction terms
+  interactions <- c()
+  interaction_strings <- c()
   if (length(factor_level_strings) > 1) {
     for (i in 2:length(factor_level_strings)) {
       interactions <- c(interactions,
                         combn(factor_level_strings, m = i, simplify = F))
     }
     for (i in 1:length(interactions)) {
+      new_int_str <- stringr::str_c(interactions[[i]], collapse = ":")
+      print(interactions[[i]])
+      if (!(new_int_str %in% pars)) {
+      interactions[[i]] <- rev(interactions[[i]])
+      print(interactions[i])
+      }
       interaction_strings <- c(
         interaction_strings,
         stringr::str_c(interactions[[i]], collapse = ":")
-      )
+        )
     }
   }
-
-  for (level in factor_info[[by]]$levels) {
-    print(level)
-
-  }
-
 
   cell_str <- paste(c(
     "Intercept",
@@ -163,23 +163,34 @@ make_cell_string <- function(factor_values, factor_info, by) {
 #'               lower = c(gender = "M", context = "inf"),
 #'               higher = c(gender = "F", context = "pol"),
 #'               alpha = 0.1)
+#'
+#' compare_cells(model = m,
+#'               lower = c(gender = "M"),
+#'               higher = c(gender = "F"),
+#'               by = "context",
+#'               alpha = 0.05)
 #' @export
-compare_cells <- function(model, higher, lower, by, alpha = 0.05) {
+compare_cells <- function(model, higher, lower, by = NA, alpha = 0.05) {
   # create factor combination strings and run hypothesis
 
   factor_info <- get_factor_information(model)
 
+  # needed work around to fix order of interactions (X:Y vs Y:X)
+  pars <- colnames(as.data.frame(m1))
+  
   # with by factor
   if (!is.na(by)) {
     hyps <- c()
     for (lvl in factor_info[[by]]$levels) {
+      # add the current level of the by-factor
       sub_lower <- c(lower, lvl)
       names(sub_lower) <- c(names(lower), by)
-      lower_str <- make_cell_string(sub_lower, factor_info)
+      lower_str <- make_cell_string(sub_lower, factor_info, pars)
 
+      # add the current level of the by-factor
       sub_higher <- c(higher, lvl)
       names(sub_higher) <- c(names(higher), by)
-      higher_str <- make_cell_string(sub_higher, factor_info)
+      higher_str <- make_cell_string(sub_higher, factor_info, pars)
 
       hyps <- c(hyps, paste(lower_str, "<", higher_str))
     }
@@ -188,8 +199,8 @@ compare_cells <- function(model, higher, lower, by, alpha = 0.05) {
 
     # no by factor
   } else {
-    lower_str <- make_cell_string(lower, factor_info)
-    higher_str <- make_cell_string(higher, factor_info)
+    lower_str <- make_cell_string(lower, factor_info, pars)
+    higher_str <- make_cell_string(higher, factor_info, pars)
     hyp <- paste(lower_str, "<", higher_str)
     print(paste("Hypothesis to test:", hyp))
     brms::hypothesis(x = model, hypothesis = hyp, alpha = alpha)
