@@ -1,367 +1,229 @@
-#' Obtaining information about factors in regression model
+#' Obtaining variable names from a brms model
 #'
-#' For a model for a factorial design, fitted with brms, this function returns information about the factors used, their levels, and the reference levels.
-#' For more information see \code{vignette('faintr_basics')}.
+#' For a model for a factorial design, fitted with brms, this function
+#' returns the names of the independent variables.  For more
+#' information see \code{vignette('faintr_basics')}.
 #' @param model Model fit from brms package.
 #' @keywords regression, factorial design, brms
-#' @import tidyverse brms
-#' @export
-#' @return list with names of factors and their levels, including the reference levels (in dummy coding)
+#' @import brms stringr
+#' @return list with names of the independent variables
 #' @examples
 #' library(brms)
-#' m = brm(yield ~ N * P * K, npk)
-#' get_factor_information(m)
-get_factor_information = function(model) {
-  
-  # extract information about dependent and independent variables from formula
-  ## TODO :: check extensively, especially for mixed effects models whether this stuff here works
-  dependent_variable = as.character(formula(model)[[1]])[[2]]
-  independent_variables = strsplit(x = gsub(pattern = "\\(.*\\|.*\\)", "", as.character(formula(model)[[1]])[[3]]),
-                                   split =  "(\\*|\\+)",
-                                   fixed = FALSE)[[1]] %>% trimws() %>% unique()
-  independent_variables = independent_variables[which(independent_variables != "")]
-  
-  # stop this if there are not at least two factors
-  if (length(independent_variables) < 1) {
-    stop("Oeps! There do not seem to be any factors!")
-  }
-  
-  # stop if any factor name or factor level contains a character that brms might not handle correctly
-  check_permitted_characters = function(chr_vec) {
-    str_which(chr_vec, "[^([:alnum:]|\\.|_)]")
-  }
-  # dependent variable
-  if (length(check_permitted_characters(dependent_variable))>0) {
-    stop("All variables, factor names, and factor levels must not contain any character except alpha-numeric characters (letters and numbers), dots '.', or underscores '_'.
-The dependent variable '", dependent_variable, "' does not satisfy this constraint.")
-  }
-  # independent variables
-  if (length(check_permitted_characters(independent_variables))>0) {
-    stop("All variables, factor names, and factor levels must not contain any character except alpha-numeric characters (letters and numbers), dots '.', or underscores '_'.
-The dependent variable(s) '", paste0(independent_variables[check_permitted_characters(independent_variables)], collapse = ", ") , "' does (do) not satisfy this constraint.")
-  }
+#' m <- brm(yield ~ N * P * K, npk)
+#' get_variables(m)
+get_variables <- function(model) {
+  # list all independent variables by parsing the brms formula
+  # extract formula from fit
+  formula <- model[["formula"]]
 
-  # construct three helpful representations of factors and their levels for the following
-  ## factors :: a list with all factors and their levels
-  factors = list()
-  n_levels = c()
-  for (iv in independent_variables) {
-    new_levels = list(levels(as.factor(model.frame(model) %>% pull(iv))))
-    factors = append(factors, new_levels)
-    n_levels = c(n_levels, length(new_levels[[1]]))
-  }
-  names(factors) = independent_variables
-  if (min(n_levels) <= 1){
-    stop("Oeps! There seems to be a factor with less than 2 levels. Please check and possibly exclude that factor.")
-  }
-  
-  # check naming conventions in factor levels
-  factor_levels = unlist(factors)
-  if (length(check_permitted_characters(factor_levels))>0) {
-    stop("All variables, factor names, and factor levels must not contain any character except alpha-numeric characters (letters and numbers), dots '.', or underscores '_'.
-The factor level(s) '", paste0(factor_levels[check_permitted_characters(factor_levels)], collapse = ", ") , "' does (do) not satisfy this constraint.")
-  }
-  
-  
-  ## ref_levels_list :: a list with all factors and their refernce levels
-  ref_levels_list = factors
-  for (iv in independent_variables) {
-    ref_levels_list[[iv]] = ref_levels_list[[iv]][1]
-  }
-  ## ref_levels :: a string representation of each factor and its reference level
-  ref_levels = c()
-  for (iv in independent_variables) {
-    ref_levels = c(ref_levels, paste0(iv, ref_levels_list[[iv]][1]))
-  }
-  
-  return(list(
-    dependent_variable = dependent_variable,
-    independent_variables = independent_variables,
-    factors = factors,
-    ref_levels_list = ref_levels_list,
-    ref_levels = ref_levels
-  ))
-}
+  # extract all variables from fit and remove tilde
+  vars <- brmsterms(formula)[["allvars"]] %>%
+    stringr::str_split(" ~ ", simplify = T)
+
+  # split predictors and remove pluses and interaction terms
+  predictors <- stringr::str_split(vars[[3, 1]], " \\+ ")[[1]]
 
 
-#' Extracting posterior cell means
-#'
-#' This function takes a brms model fit for a factorial design and outputs a comparison of all factor levels against each other, and posterior samples of all cell means. 
-#' For more information see \code{vignette('faintr_basics')}.
-#' @param model Model fit from brms package.
-#' @keywords regression, factorial design, brms
-#' @import tidyverse brms
-#' @export
-#' @return list with (i) samples of estimated means of all cells, (ii) pairwise comparison of each cell (whether one has credibly a higher inferred mean than the other), and (iii) a summary (mean & 95% HDI) for each posterior estimate of cell means.
-#' @examples
-#' #' library(brms)
-#' m = brm(yield ~ N * P * K, npk)
-#' post_cells(m)
-post_cells = function(model) {
-  
-  # check if repsonse variable is metric and abort if not
-  if (model$family$family != "gaussian") {
-    stop("Unfortunately, 'faintr' currently only works with metric response variables (family 'gaussian').")
-  }
-  
-  
-  # get information about factors
-  factor_info = get_factor_information(model)
-  dependent_variable = factor_info[["dependent_variable"]]
-  independent_variables = factor_info[["independent_variables"]]
-  factors = factor_info[["factors"]]
-  ref_levels_list = factor_info[["ref_levels_list"]]
-  ref_levels = factor_info[["ref_levels"]]
-  
-  # get the posterior samples for all regression coefficients
-  post_samples = posterior_samples(model) %>% select(starts_with("b_"))
-  
-  # get a table of cells (factor-level combinations) in an ugly format (for internal use)
-  cells = expand.grid(factors) 
-  for (j in 1:ncol(cells)) {
-    levels(cells[,j]) = paste0(colnames(cells)[j], levels(cells[,j]))
-  }
-  
-  # get a table of cells (factor-level combinations) with more readable labels (for final output)
-  cells_readable = expand.grid(factors) 
-  for (j in 1:ncol(cells_readable)) {
-    levels(cells_readable[,j]) = paste0(colnames(cells_readable)[j], ":", levels(cells_readable[,j]))
-  }
-  
-  # get the names of all estimated coefficients
-  coefficient_names = names(post_samples)
-  # add the reference levels to the coefficient names (where it is missing/implicit)
-  for (c in 1:length(coefficient_names)) {
-    for (f in names(factors)) {
-      if (!grepl(f, coefficient_names[c])) {
-        coefficient_names[c] = paste0(coefficient_names[c], "_", f, ref_levels_list[[f]])
-      }
-    }
-  }
-  names(post_samples) = coefficient_names
-  
-  # two convenience functions to get all coefficients that belong to a design cell
-  replace_with_ref_level_recursion = function(cell) {
-    which_fcts_are_at_ref_level = map_lgl(cell, function(fl) fl %in% ref_levels)
-    if (all(which_fcts_are_at_ref_level)) {
-      return(list(cell))
-    } 
-    else {
-      factors_to_replace_with_ref_level = which(which_fcts_are_at_ref_level == F)
-      output = list(cell)
-      for (f in factors_to_replace_with_ref_level) {
-        replaced_cell = cell
-        replaced_cell[f] = ref_levels[f]
-        output = append(output, replace_with_ref_level(replaced_cell))
-      }
-      output
-    }
-  }
-  replace_with_ref_level = function(cell) {
-    unique(replace_with_ref_level_recursion(cell))
-  }
-  
-  # get samples for the predictor values for each design cell
-  predictor_values = map_df(
-    1:nrow(cells), 
-    function(i) {
-      cell = cells[i,1:(ncol(cells))]
-      coefficients_to_check = replace_with_ref_level(cell)
-      out = 0
-      column_indices = map_dbl(1:length(coefficients_to_check), 
-                               function(j){
-                                 which(
-                                   map_lgl(coefficient_names, function(coefficient_in_question) {
-                                     all(map_lgl(coefficients_to_check[[j]], function(c) grepl(c, coefficient_in_question)))
-                                   }) == T  
-                                 )
-                               }
-      )
-      tibble(
-        cell = paste(map_chr(1:ifelse(is.null(ncol(cell)), 1, ncol(cell)), 
-                             function(j) as.character(cells_readable[i,j])), collapse = "__"),
-        predictor_value = rowSums(post_samples[column_indices]),
-        n_sample = 1:length(predictor_value)
-      )
-    }
-  ) 
-  
-  predictor_values = predictor_values %>% spread(key = cell, value = predictor_value)
-  
-  ## an alternative (more versatile) output which compares all cells
-  
-  cells = expand.grid(factors)
-  for (j in 1:ncol(cells_readable)) {cells_readable[,j] = as.character(cells_readable[,j])}  
-  cells$cell_name = map_chr(
-    1:nrow(cells_readable), 
-    function(i) {paste(as.character(cells_readable[i,]), collapse = "__")}
-  )
-  for (j in 1:ncol(cells)) {cells[,j] = as.character(cells[,j])}
-  
-  cells_high = cells
-  cells_low = cells
-  names(cells_high) = map_chr(names(cells), function(c) {paste0(c, "_high")})
-  names(cells_low)  = map_chr(names(cells), function(c) {paste0(c, "_low")})
-  
-  # borrowed from here: https://stackoverflow.com/questions/11693599/alternative-to-expand-grid-for-data-frames
-  expand.grid.df <- function(...) Reduce(function(...) merge(..., by=NULL), list(...))
-  
-  all_cells_compared = expand.grid.df(cells_high, cells_low)
-  for (j in 1:ncol(all_cells_compared)) {all_cells_compared[,j] = as.character(all_cells_compared[,j])}  
-  all_cells_compared = all_cells_compared %>% filter(cell_name_high != cell_name_low)
-  
-  all_cells_compared$posterior = map_dbl(
-    1:nrow(all_cells_compared), 
-    function(i) {
-      mean(predictor_values[all_cells_compared$cell_name_high[i]] > 
-             predictor_values[all_cells_compared$cell_name_low[i]])
-    }  
-  )
+  # TODO: extracting interaction terms here to check which are actually
+  # encoded in the model
 
-  ## safely remove column with sample number
-  if ("n_sample" %in% names(predictor_values)) {
-    predictor_values = predictor_values %>% select(-n_sample)
-  }
-  
-  cell_summary = full_join(
-    map_df(predictor_values, function(x){HDInterval::hdi(x)[1]}) %>% gather(key = "cell", value = "lower 95% CI"),
-    map_df(predictor_values, mean) %>% gather(key = "cell", value = "mean"),
-    by = "cell"
-  ) %>% 
-  full_join(
-    map_df(predictor_values, function(x){HDInterval::hdi(x)[2]}) %>% gather(key = "cell", value = "upper 95% CI"),
-    by = "cell"
-  ) 
-  
-  ## output
-  
+  interactions <- Filter(function(x) grepl(":", x), predictors)
+
+  predictors <- predictors[2:length(predictors)] %>%
+    stringr::str_split("\\:") %>%
+    unlist() %>%
+    unique()
+
   return(
     list(
-      predictor_values = predictor_values,
-      all_cells_compared = all_cells_compared,
-      cell_summary = cell_summary
+      predicted = vars[[2, 1]],
+      predictors = predictors,
+      interactions = interactions
     )
   )
-  
 }
 
+#' Obtaining information about factors in regression model
+#'
+#' For a model for a factorial design, fitted with brms, this function
+#' returns information about the factors used, their levels, and the
+#' reference levels.  For more information see
+#' \code{vignette('faintr_basics')}.
+#' @param model Model fit from brms package.
+#' @keywords regression, factorial design, brms
+#' @import dplyr
+#' @return list with names of factors and their levels, including the
+#'   reference levels (in dummy coding)
+#' @examples
+#' library(brms)
+#' m <- brm(pitch ~ gender * context, politeness)
+#' get_factor_information(m)
+get_factor_information <- function(model) {
+  # return independent variables that are factors and their levels
+
+  variables <- get_variables(model)
+
+  predictors <- variables[["predictors"]]
+
+  # data that the model was fit on
+  d <- stats::model.frame(model)
+
+  # get vector of names of factor predictors
+  factor_predictors <- d %>%
+    dplyr::select(predictors) %>%
+    dplyr::select_if(is.factor) %>%
+    names()
+
+  # output levels for each of the predictor factors
+  factor_info <- list()
+  for (fac in factor_predictors) {
+    lvls <- levels(d[[fac]])
+    ref_lvl <- lvls[1]
+    factor_levels <- list(
+      levels = lvls,
+      reference = ref_lvl
+    )
+
+    factor_info[[fac]] <- factor_levels
+  }
+
+  return(factor_info)
+}
+
+##' Create string combining factor levels
+##'
+##' Given a specification of factor levels, this function creates as
+##' string corresponding the formula for that cell in the design
+##' matrix.
+##' @title
+##' @import dplyr
+##' @param factor_values named list specifying which levels of each
+##'   factor to combine
+##' @param factor_info list with names of factors and their levels,
+##'   including the reference levels (in dummy coding)
+##' @return string specifying levels of factors to be combined into a
+##'   cell
+make_cell_string <- function(factor_values, factor_info, pars) {
+  # create a string for the combination of factor levels
+  factor_level_strings <- c()
+
+  for (fct in names(factor_values)) {
+    # check for reference level
+    if (factor_info[[fct]]$reference != factor_values[[fct]]) {
+      factor_level_strings <- c(
+        factor_level_strings,
+        paste0(fct, factor_values[[fct]])
+      )
+    }
+  }
+
+
+  # add interaction terms
+  interactions <- c()
+  interaction_strings <- c()
+  if (length(factor_level_strings) > 1) {
+    for (i in 2:length(factor_level_strings)) {
+      interactions <- c(interactions,
+                        combn(factor_level_strings, m = i, simplify = F))
+    }
+    for (i in 1:length(interactions)) {
+      new_int_str <- stringr::str_c(interactions[[i]], collapse = ":")
+
+      # check if interaction is actually in model
+      if (!(new_int_str %in% pars)) {
+
+        # try reversing interaction
+        # TODO: try different permutations for 3-way interactions
+        interactions[[i]] <- rev(interactions[[i]])
+        new_int_str <- stringr::str_c(interactions[[i]], collapse = ":")
+
+        # check if reversed is actually in model
+        if (!(new_int_str %in% pars)) {
+          new_int_str <- ""
+        }
+      }
+      interaction_strings <- c(
+        interaction_strings,
+        new_int_str
+      )
+    }
+  }
+
+  interaction_strings <- interaction_strings %>%
+    stringi::stri_remove_empty()
+  
+  cell_str <- paste(c(
+    "Intercept",
+    factor_level_strings,
+    interaction_strings),
+    collapse = " + ")
+}
 
 #' Compare means of two subsets of factorial design cells
 #'
-#' This function takes a brms model fit for a factorial design and a specification of two groups (subsets of design cells) to compare. 
-#' A group is specified as a named list, specifiying the factors and their levels which to include in the group.
-#' It outputs the posterior mean of the 'higher' minus the 'lower' subset of cells, its 95 percent credible interval and the posterior probability that the 'higher' group has a higher mean than the the 'lower' group.
-#' For more information see \code{vignette('faintr_basics')}.
-#' @param model Model fit from brms package.
-#' @keywords regression, factorial design, brms
-#' @import tidyverse brms
-#' @importFrom HDInterval hdi
-#' @export
-#' @return list with posterior samples for each group, and the posterior probability that group 'higher' has a higher estimated coefficient in the posterior samples than the group 'lower'
+#' This function takes a brms model fit for a factorial design and a
+#' specification of two groups (subsets of design cells) to compare.
+#' A group is specified as a named list, specifiying the factors and
+#' their levels which to include in the group.  It outputs the
+#' posterior mean of the 'higher' minus the 'lower' subset of cells,
+#' its 95 percent credible interval and the posterior probability that
+#' the 'higher' group has a higher mean than the the 'lower' group.
+#'
+#' @param model a brmsfit
+#' @param higher named list specifying levels of factors that specify
+#'     the cell hypothesised to yield a higher dependent variable
+#'     value
+#' @param lower named list specifying levels of factors that specify
+#'     the cell hypothesised to yield a lower dependent variable value
+#' @param alpha level of probability
+#' @return a brmshypothesis object corresponding to the hypothesis of
+#'     "higher > lower"
 #' @examples
-#' library(brms)
-#' m = brm(yield ~ N * P * K, npk)
-#' # this compares two single cells in the factorial design
-#' compare_groups(
-#'  model = m, 
-#'  higher = list("N" = "1", "P" = "1",  "K" = "1"), 
-#'  lower  = list("N" = "0", "P" = "0",  "K" = "1")
-#' )
-#' # this compares the average of N=1 cells to the grand mean
-#' # like in deviance conding
-#' compare_groups(
-#'  model = m, 
-#'  higher = list("N" = "1"), 
-#'  lower  = list()
-#' )
-#' 
-compare_groups = function(model, higher, lower) {
-  
-  # get information about factors
-  factor_info = get_factor_information(model)
-  dependent_variable = factor_info[["dependent_variable"]]
-  independent_variables = factor_info[["independent_variables"]]
-  factors = factor_info[["factors"]]
-  ref_levels_list = factor_info[["ref_levels_list"]]
-  ref_levels = factor_info[["ref_levels"]]
-  
-  # check the input groups
-  input_combined = c(higher, lower)
-  ## check if all factor names specified are actually in the model
-  input_factor_names = unique(names(input_combined))
-  known_factor_names = map_lgl(input_factor_names, function(f) {f %in% independent_variables})
-  if (sum(known_factor_names) < length(known_factor_names)) {
-    stop("The following factor names specified in the groups to be compared do not match any independent variable in the specified model: 
-  ", paste(input_factor_names[known_factor_names == F], collapse = ", "))
-  }
-  ## check if all factor levels specified are actually in the model
-  for (i in length(input_combined)) {
-    if (! input_combined[[i]] %in% factors[[names(input_combined)[i]]]) {
-      stop("The level '", input_combined[[i]], "' is not part of the factor '", names(input_combined)[i], "' in the given model.")
-    }
-  }
-  
-  # get posterior samples for all cell means
-  post_cell_samples = post_cells(model)$predictor_values
-  
-  ## helper function :: recursive extraction of cell names
-  collect_cell_names = function(remaining_names, remaining_factors) {
-    if (length(remaining_factors) == 1) {
-      return ( str_subset(remaining_names, remaining_factors) )
-    } else {
-      remaining_names = str_subset(remaining_names, remaining_factors[1]) 
-      remaining_factors = remaining_factors[2:length(remaining_factors)]
-      return(collect_cell_names(remaining_names, remaining_factors))
-    }
-  }
-  
-  ## helper function :: get names for cells
-  get_group_names = function(group){
-    if (length(group) == 0) {
-      return("grand mean")
-    }
-    map_chr(1:length(group), 
-            function(c) {paste(names(group[c]), unlist(group[c]), sep = ":")})  
-  }
-  
-  ## helper function :: get means for each cell
-  extract_group_samples = function(group) {
-    if (length(group) == 0) {
-      return(apply(as.matrix(post_cell_samples), 1, mean))
-    }
-    factors_group = get_group_names(group)
-    cells_group = collect_cell_names(names(post_cell_samples), factors_group)
-    apply(as.matrix(post_cell_samples %>% select(cells_group)), 1, mean)
-  }
-  
-  post_samples_higher = extract_group_samples(higher)
-  post_samples_lower  = extract_group_samples(lower)
-  
-  outlist = list(
-    post_samples_higher = post_samples_higher,
-    post_samples_lower = post_samples_lower,
-    higher = get_group_names(higher),
-    lower = get_group_names(lower),
-    mean_diff = mean(post_samples_higher - post_samples_lower),
-    l95_ci = as.vector(hdi(post_samples_higher - post_samples_lower)[1]),
-    u95_ci = as.vector(hdi(post_samples_higher - post_samples_lower)[2]),
-    probability = mean(post_samples_higher > post_samples_lower)
-  )
-  class(outlist) = "faintCompare"
-  return(outlist)
-}
-
-#' Print comparison object between factor groups
-#' @param model Model fit from brms package.
-#' @keywords regression, factorial design, brms
+#' m <- brm(pitch ~ gender * context, politeness)
+#' compare_cells(model = m,
+#'               lower = c(gender = "M", context = "inf"),
+#'               higher = c(gender = "F", context = "pol"),
+#'               alpha = 0.1)
+#'
+#' compare_cells(model = m,
+#'               lower = c(gender = "M"),
+#'               higher = c(gender = "F"),
+#'               by = "context",
+#'               alpha = 0.05)
 #' @export
-#' @return string
-#' @examples print(model_fit)
-print.faintCompare = function(obj) {
-  cat("Outcome of comparing groups:\n")
-  cat(" * higher: ", obj$higher, "\n")
-  cat(" * lower:  ", obj$lower, "\n")
-  cat("Mean 'higher - lower': ", signif(obj$mean_diff, 4), "\n")
-  cat("95% CI: [", signif(obj$l95_ci, 4), ";", signif(obj$u95_ci,4), "]\n")
-  cat("P('higher - lower' > 0): ", signif(obj$probability,4), "\n")
+compare_cells <- function(model, higher, lower, by = NA, alpha = 0.05) {
+  # create factor combination strings and run hypothesis
+
+  factor_info <- get_factor_information(model)
+
+  # needed work around to fix order of interactions (X:Y vs Y:X)
+  pars <- colnames(as.data.frame(model))
+
+  # with by factor
+  if (!is.na(by)) {
+    hyps <- c()
+    for (lvl in factor_info[[by]]$levels) {
+      # add the current level of the by-factor
+      sub_lower <- c(lower, lvl)
+      names(sub_lower) <- c(names(lower), by)
+      lower_str <- make_cell_string(sub_lower, factor_info, pars)
+
+      # add the current level of the by-factor
+      sub_higher <- c(higher, lvl)
+      names(sub_higher) <- c(names(higher), by)
+      higher_str <- make_cell_string(sub_higher, factor_info, pars)
+
+      hyps <- c(hyps, paste(lower_str, "<", higher_str))
+    }
+    print(paste("Hypothesis to test:", hyps))
+    brms::hypothesis(x = model, hypothesis = hyps, alpha = alpha)
+
+    # no by factor
+  } else {
+    lower_str <- make_cell_string(lower, factor_info, pars)
+    higher_str <- make_cell_string(higher, factor_info, pars)
+    hyp <- paste(lower_str, "<", higher_str)
+    print(paste("Hypothesis to test:", hyp))
+    brms::hypothesis(x = model, hypothesis = hyp, alpha = alpha)
+  }
 }
