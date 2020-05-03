@@ -176,7 +176,7 @@ compare_cells <- function(model, higher, lower, by = NA, alpha = 0.05) {
   factor_info <- get_factor_information(model)
 
   # needed work around to fix order of interactions (X:Y vs Y:X)
-  pars <- colnames(as.data.frame(m1))
+  pars <- colnames(as.data.frame(model))
   
   # with by factor
   if (!is.na(by)) {
