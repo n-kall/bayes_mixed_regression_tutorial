@@ -130,15 +130,13 @@ make_cell_string <- function(factor_values, factor_info, pars) {
       new_int_str <- stringr::str_c(interactions[[i]], collapse = ":")
 
       # check if interaction is actually in model
-      if (!(new_int_str %in% pars)) {
-
+      if (!(str_c("b_", new_int_str) %in% pars)) {
         # try reversing interaction
         # TODO: try different permutations for 3-way interactions
-        interactions[[i]] <- rev(interactions[[i]])
-        new_int_str <- stringr::str_c(interactions[[i]], collapse = ":")
+        new_int_str <- stringr::str_c(rev(interactions[[i]]), collapse = ":")
 
         # check if reversed is actually in model
-        if (!(new_int_str %in% pars)) {
+        if (!(str_c("b_", new_int_str) %in% pars)) {
           new_int_str <- ""
         }
       }
