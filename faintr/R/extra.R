@@ -108,7 +108,7 @@ make_cell_string <- function(factor_values, factor_info, pars) {
     }
   }
 
-  
+
   # add interaction terms
   interactions <- c()
   interaction_strings <- c()
@@ -120,17 +120,30 @@ make_cell_string <- function(factor_values, factor_info, pars) {
     for (i in 1:length(interactions)) {
       new_int_str <- stringr::str_c(interactions[[i]], collapse = ":")
       print(interactions[[i]])
+
+      # check if interaction is actually in model
       if (!(new_int_str %in% pars)) {
-      interactions[[i]] <- rev(interactions[[i]])
-      print(interactions[i])
+
+        # try reversing interaction
+        interactions[[i]] <- rev(interactions[[i]])
+        print(interactions[i])
+        new_int_str <- stringr::str_c(interactions[[i]], collapse = ":")
+
+        # check if reversed is actually in model
+        if (!(new_int_str %in% pars)) {
+          new_int_str <- ""
+        }
       }
       interaction_strings <- c(
         interaction_strings,
-        stringr::str_c(interactions[[i]], collapse = ":")
-        )
+        new_int_str
+      )
     }
   }
 
+  interaction_strings <- interaction_strings %>%
+    stringi::stri_remove_empty()
+  
   cell_str <- paste(c(
     "Intercept",
     factor_level_strings,
@@ -177,7 +190,7 @@ compare_cells <- function(model, higher, lower, by = NA, alpha = 0.05) {
 
   # needed work around to fix order of interactions (X:Y vs Y:X)
   pars <- colnames(as.data.frame(model))
-  
+
   # with by factor
   if (!is.na(by)) {
     hyps <- c()
