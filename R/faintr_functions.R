@@ -17,7 +17,7 @@ get_variables <- function(model) {
   formula <- model[["formula"]]
 
   # extract all variables from fit and remove tilde
-  vars <- brmsterms(formula)[["allvars"]] %>%
+  vars <- parse_bf(formula)[["allvars"]] %>%
     stringr::str_split(" ~ ", simplify = T)
 
   # split predictors and remove pluses and interaction terms
