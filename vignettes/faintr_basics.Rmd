@@ -99,7 +99,7 @@ compare two cell diagonally, say, male speakers in informal contexts
 against female speakers in polite contexts, we can do this:
 
 ```{r}
-compare_cells(
+faintr::compare_cells(
   model = m_dummy,
   higher = c(gender = "F", context = "pol"),
   lower = c(gender = "M", context = "inf")
@@ -110,7 +110,7 @@ We could also compare male and female speakers at each context using
 the `by` argument.
 
 ```{r }
-compare_cells(
+faintr::compare_cells(
   model = m_dummy,
   higher = c(gender = "F"),
   lower = c(gender = "M"),
