@@ -2,7 +2,7 @@
 % Please edit documentation in R/extra.R
 \name{compare_cells}
 \alias{compare_cells}
-\title{}
+\title{Compare cells in factorial regression}
 \usage{
 compare_cells(model, higher, lower, alpha = 0.05)
 }
