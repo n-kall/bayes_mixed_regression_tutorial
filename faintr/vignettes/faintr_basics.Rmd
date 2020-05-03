@@ -62,7 +62,7 @@ data(politeness)
 The cell means of this data set are:
 
 ```{r}
-politedata %>%
+politeness %>%
     group_by(gender, context) %>%
     summarize(mean_pitch = mean(pitch))
 ```
@@ -74,7 +74,7 @@ follows:
 
 ```{r, error=FALSE, warning=FALSE, message=FALSE, results="hide"}
 library(brms)
-m_dummy <- brm(pitch ~ gender * context + (1 | subject + sentence), politedata)
+m_dummy <- brm(pitch ~ gender * context + (1 | subject + sentence), politeness)
 ```
 
 The `brm` function uses dummy coding per default.  Look at the
