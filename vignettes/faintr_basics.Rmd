@@ -18,6 +18,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       fig.height = 3,
                       fig.widht = 4)
 library(tidyverse)
+library(posterior)
 theme_set(theme_bw() + theme(plot.background=element_blank()) )
 ```
 
@@ -98,22 +99,12 @@ retrieved from the posterior samples. For example, if we want to
 compare two cell diagonally, say, male speakers in informal contexts
 against female speakers in polite contexts, we can do this:
 
-```{r}
-faintr::compare_cells(
-  model = m_dummy,
-  higher = c(gender = "F", context = "pol"),
-  lower = c(gender = "M", context = "inf")
-)
-```
-
-We could also compare male and female speakers at each context using
-the `by` argument.
-
 ```{r }
 faintr::compare_cells(
   model = m_dummy,
-  higher = c(gender = "F"),
-  lower = c(gender = "M"),
-  by = "context"
-  )
+  higher = c("gender = F", "context = pol"),
+  lower = c("gender = M", "context = pol"),
+  ) %>%
+  posterior::summarise_draws(default_summary_measures())
+  
 ```

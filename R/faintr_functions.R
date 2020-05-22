@@ -12,8 +12,7 @@
 #'   the cell hypothesised to yield a higher dependent variable value
 #' @param lower named list specifying levels of factors that specify
 #'   the cell hypothesised to yield a lower dependent variable value
-#' @param alpha level of probability
-#' @return a tibble with posterior draws from each of the groups and
+#' #' @return a tibble with posterior draws from each of the groups and
 #'   the comparison
 #' @examples
 #' m <- brm(pitch ~ gender * context, politeness)
@@ -126,5 +125,5 @@ combined_draws <- function(model, cell_definition) {
     rowMeans() %>%
     as_tibble()
 
-  out
-  }
+  return(out)
+}
