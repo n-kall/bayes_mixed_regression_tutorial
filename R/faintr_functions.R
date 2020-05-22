@@ -90,7 +90,7 @@ get_factor_information <- function(model) {
   return(factor_info)
 }
 
-##' Create string combining factor levels
+##' Create a vector with factor levels for a cell
 ##'
 ##' Given a specification of factor levels, this function creates as
 ##' string corresponding the formula for that cell in the design
@@ -101,10 +101,8 @@ get_factor_information <- function(model) {
 ##'   factor to combine
 ##' @param factor_info list with names of factors and their levels,
 ##'   including the reference levels (in dummy coding)
-##' @return string specifying levels of factors to be combined into a
-##'   cell
-make_cell_string <- function(factor_values, factor_info, pars) {
-  # create a string for the combination of factor levels
+##' @return vector specifying levels of factors that define a cell
+make_cell <- function(factor_values, factor_info, pars) {
   factor_level_strings <- c()
 
   for (fct in names(factor_values)) {
@@ -149,12 +147,16 @@ make_cell_string <- function(factor_values, factor_info, pars) {
 
   interaction_strings <- interaction_strings %>%
     stringi::stri_remove_empty()
-  
-  cell_str <- paste(c(
-    "Intercept",
-    factor_level_strings,
-    interaction_strings),
-    collapse = " + ")
+
+
+
+  c("Intercept", factor_level_strings, interaction_strings)
+
+  ## cell_str <- paste(c(
+  ##   "Intercept",
+  ##   factor_level_strings,
+  ##   interaction_strings),
+  ##   collapse = " + ")
 }
 
 #' Compare means of two subsets of factorial design cells
@@ -163,9 +165,8 @@ make_cell_string <- function(factor_values, factor_info, pars) {
 #' specification of two groups (subsets of design cells) to compare.
 #' A group is specified as a named list, specifiying the factors and
 #' their levels which to include in the group.  It outputs the
-#' posterior mean of the 'higher' minus the 'lower' subset of cells,
-#' its 95 percent credible interval and the posterior probability that
-#' the 'higher' group has a higher mean than the the 'lower' group.
+#' posterior samples of the 'higher' and 'lower' subsets of cells,
+#' and the comparison 'higher - lower'.
 #'
 #' @param model a brmsfit
 #' @param higher named list specifying levels of factors that specify
@@ -174,22 +175,15 @@ make_cell_string <- function(factor_values, factor_info, pars) {
 #' @param lower named list specifying levels of factors that specify
 #'     the cell hypothesised to yield a lower dependent variable value
 #' @param alpha level of probability
-#' @return a brmshypothesis object corresponding to the hypothesis of
-#'     "higher > lower"
+#' @return a tibble with posterior draws from each of the groups
 #' @examples
 #' m <- brm(pitch ~ gender * context, politeness)
 #' compare_cells(model = m,
 #'               lower = c(gender = "M", context = "inf"),
-#'               higher = c(gender = "F", context = "pol"),
-#'               alpha = 0.1)
+#'               higher = c(gender = "F", context = "pol"))
 #'
-#' compare_cells(model = m,
-#'               lower = c(gender = "M"),
-#'               higher = c(gender = "F"),
-#'               by = "context",
-#'               alpha = 0.05)
 #' @export
-compare_cells <- function(model, higher, lower, by = NA, alpha = 0.05) {
+compare_cells <- function(model, lower_group, higher_group) {
   # create factor combination strings and run hypothesis
 
   factor_info <- get_factor_information(model)
@@ -197,31 +191,23 @@ compare_cells <- function(model, higher, lower, by = NA, alpha = 0.05) {
   # needed work around to fix order of interactions (X:Y vs Y:X)
   pars <- colnames(as.data.frame(model))
 
-  # with by factor
-  if (!is.na(by)) {
-    hyps <- c()
-    for (lvl in factor_info[[by]]$levels) {
-      # add the current level of the by-factor
-      sub_lower <- c(lower, lvl)
-      names(sub_lower) <- c(names(lower), by)
-      lower_str <- make_cell_string(sub_lower, factor_info, pars)
 
-      # add the current level of the by-factor
-      sub_higher <- c(higher, lvl)
-      names(sub_higher) <- c(names(higher), by)
-      higher_str <- make_cell_string(sub_higher, factor_info, pars)
+  # TODO: loop over multiple cell definitions for each group
+  lower_cell <- make_cell(lower_group, factor_info, pars)
+  lower_group <- posterior::as_draws_df(as.data.frame(model)) %>%
+    select(all_of(str_c("b_", lower_cell))) %>%
+    rowSums() %>%
+    as_tibble()
+  colnames(lower_group) <- c("lower")
 
-      hyps <- c(hyps, paste(lower_str, "<", higher_str))
-    }
-    print(paste("Hypothesis to test:", hyps))
-    brms::hypothesis(x = model, hypothesis = hyps, alpha = alpha)
+  higher_cell <- make_cell(higher_group, factor_info, pars)
+  higher_group <- posterior::as_draws_df(as.data.frame(model)) %>%
+    select(all_of(str_c("b_", higher_cell))) %>%
+    rowSums() %>%
+    as_tibble()
+  colnames(higher_group) <- c("higher")
 
-    # no by factor
-  } else {
-    lower_str <- make_cell_string(lower, factor_info, pars)
-    higher_str <- make_cell_string(higher, factor_info, pars)
-    hyp <- paste(lower_str, "<", higher_str)
-    print(paste("Hypothesis to test:", hyp))
-    brms::hypothesis(x = model, hypothesis = hyp, alpha = alpha)
-  }
+  comparison <- lower_group %>%
+    bind_cols(higher_group) %>%
+    mutate(comp = higher - lower)
 }
