@@ -22,6 +22,10 @@
 #'
 #' @export
 compare_cells <- function(model, lower_group, higher_group) {
+
+
+  #TODO: Allow for 'OR' operator when specifying levels
+
   lower_draws <- combined_draws(model, lower_group) %>%
     rename(lower = value)
   higher_draws <- combined_draws(model, higher_group) %>%
@@ -31,7 +35,7 @@ compare_cells <- function(model, lower_group, higher_group) {
     mutate(comparison = higher - lower)
 
    colnames(out) <- c(stringr::str_c(lower_group, collapse = ","),
-                     stringr::str_c(higher_group),
+                     stringr::str_c(higher_group, collapse = ","),
                      "comparison")
 
   return(out)
@@ -74,9 +78,9 @@ get_cell_draws <- function(model) {
 select_cells <- function(model, definition) {
   vars <- c()
   ref_vars <- c()
-  ref_facs <- c()
+  ref_cols <- c()
 
-  contrasts <- attr(standata(model)$X, "contrasts")
+  contrasts <- attr(brms::standata(model)$X, "contrasts")
   for (def in definition) {
     split_def <- stringr::str_split(def, " = ", simplify = T)
     factor <- split_def[[1]]
@@ -103,12 +107,12 @@ select_cells <- function(model, definition) {
 
   if (length(ref_vars) != 0) {
 
-    ref_facs <- design_matrix %>%
+    ref_cols <- design_matrix %>%
       dplyr::select(starts_with(ref_vars)) %>%
       colnames()
 
     out <- out %>%
-      dplyr::filter_at(.vars = ref_facs,
+      dplyr::filter_at(.vars = ref_cols,
                 .vars_predicate = ~ . == 0)
     }
   return(unique(out))
