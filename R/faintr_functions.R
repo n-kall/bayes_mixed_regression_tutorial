@@ -12,7 +12,7 @@
 #'   the cell hypothesised to yield a higher dependent variable value
 #' @param lower named list specifying levels of factors that specify
 #'   the cell hypothesised to yield a lower dependent variable value
-#' #' @return a tibble with posterior draws from each of the groups and
+#' @return a tibble with posterior draws from each of the groups and
 #'   the comparison
 #' @examples
 #' m <- brm(pitch ~ gender * context, politeness)
@@ -84,7 +84,7 @@ select_cells <- function(model, definition) {
     if (contrasts[[factor]][level, 1] == 0) {
       ref_vars <- c(ref_vars, factor)
     } else {
-      vars <- c(vars, stringr::str_c(split_def[[1]], split_def[[2]]))
+      vars <- c(vars, stringr::str_c(factor, level))
     }
   }
 
