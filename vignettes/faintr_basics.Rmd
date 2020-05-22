@@ -18,7 +18,6 @@ knitr::opts_chunk$set(echo = TRUE,
                       fig.height = 3,
                       fig.widht = 4)
 library(tidyverse)
-library(posterior)
 theme_set(theme_bw() + theme(plot.background=element_blank()) )
 ```
 
@@ -81,7 +80,7 @@ m_dummy <- brm(pitch ~ gender * context + (1 | subject + sentence), politeness)
 The `brm` function uses dummy coding per default.  Look at the
 estimated coefficients:
 
-```{r}
+```{r }
 fixef(m_dummy)
 ```
 
@@ -103,8 +102,7 @@ against female speakers in polite contexts, we can do this:
 faintr::compare_cells(
   model = m_dummy,
   higher = c("gender = F", "context = pol"),
-  lower = c("gender = M", "context = pol"),
-  ) %>%
-  posterior::summarise_draws(default_summary_measures())
-  
+  lower = c("gender = M", "context = pol")
+  )
+
 ```
