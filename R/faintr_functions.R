@@ -21,14 +21,14 @@
 #'               higher = c("gender = F", "context = pol"))
 #'
 #' @export
-compare_cells <- function(model, lower_group, higher_group) {
+compare_cells <- function(model, lower_group, higher_group, cmc) {
 
 
   #TODO: Allow for 'OR' operator when specifying levels
 
-  lower_draws <- combined_draws(model, lower_group) %>%
+  lower_draws <- combined_draws(model, lower_group, cmc) %>%
     rename(lower = value)
-  higher_draws <- combined_draws(model, higher_group) %>%
+  higher_draws <- combined_draws(model, higher_group, cmc) %>%
     rename(higher = value)
   out <- lower_draws %>%
     bind_cols(higher_draws) %>%
@@ -75,26 +75,39 @@ get_cell_draws <- function(model) {
   return(cell_draws)
 }
 
-select_cells <- function(model, definition) {
+select_cells <- function(model, definition, cmc) {
   vars <- c()
   ref_vars <- c()
   ref_cols <- c()
 
-  contrasts <- attr(brms::standata(model)$X, "contrasts")
-  for (def in definition) {
-    split_def <- stringr::str_split(def, " = ", simplify = T)
-    factor <- split_def[[1]]
-    level <- split_def[[2]]
-    if (contrasts[[factor]][level, 1] == 0) {
-      ref_vars <- c(ref_vars, factor)
-    } else {
-      vars <- c(vars, stringr::str_c(factor, level))
+
+  if (cmc == FALSE) {
+
+    # find reference levels (dummy coding)
+    contrasts <- attr(brms::standata(model)$X, "contrasts")
+    for (def in definition) {
+      split_def <- stringr::str_split(def, " = ", simplify = T)
+      factor <- split_def[[1]]
+      level <- split_def[[2]]
+      if (rownames(contrasts[[factor]])[1] == level) {
+        ref_vars <- c(ref_vars, factor)
+      } else {
+        vars <- c(vars, stringr::str_c(factor, level))
+      }
     }
+  } else if (cmc == TRUE) {
+    for (def in definition) {
+      split_def <- stringr::str_split(def, " = ", simplify = T)
+      factor <- split_def[[1]]
+      level <- split_def[[2]]
+      vars <- c(vars, stringr::str_c(factor, level))
+      }
   }
+  
 
   design_matrix <- brms::standata(model)$X %>%
                                        tibble::as_tibble() %>%
-                                       rownames_to_column("cell")
+                                       tibble::rownames_to_column("cell")
 
   out <- design_matrix %>%
     tibble::as_tibble()
@@ -113,15 +126,15 @@ select_cells <- function(model, definition) {
 
     out <- out %>%
       dplyr::filter_at(.vars = ref_cols,
-                .vars_predicate = ~ . == 0)
+                       .vars_predicate = ~ . == 0)
     }
   return(unique(out))
 
 }
 
 
-combined_draws <- function(model, cell_definition) {
-  cells <- select_cells(model, cell_definition)
+combined_draws <- function(model, cell_definition, cmc) {
+  cells <- select_cells(model, cell_definition, cmc)
 
   combined <- get_cell_draws(model)
 
