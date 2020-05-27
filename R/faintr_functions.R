@@ -21,7 +21,7 @@
 #'               higher = c("gender = F", "context = pol"))
 #'
 #' @export
-compare_cells <- function(model, lower_group, higher_group, cmc) {
+compare_cells <- function(model, lower_group, higher_group, cmc = FALSE) {
 
 
   #TODO: Allow for 'OR' operator when specifying levels
