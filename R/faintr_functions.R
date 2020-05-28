@@ -21,21 +21,21 @@
 #'               higher = c("gender = F", "context = pol"))
 #'
 #' @export
-compare_cells <- function(model, lower_group, higher_group, cmc = FALSE) {
+compare_cells <- function(model, lower_group, higher_group) {
 
 
   #TODO: Allow for 'OR' operator when specifying levels
 
-  lower_draws <- combined_draws(model, lower_group, cmc) %>%
+  lower_draws <- combined_draws(model, lower_group) %>%
     rename(lower = value)
-  higher_draws <- combined_draws(model, higher_group, cmc) %>%
+  higher_draws <- combined_draws(model, higher_group) %>%
     rename(higher = value)
   out <- lower_draws %>%
     bind_cols(higher_draws) %>%
     mutate(comparison = higher - lower)
 
-   colnames(out) <- c(stringr::str_c(lower_group, collapse = ","),
-                     stringr::str_c(higher_group, collapse = ","),
+   colnames(out) <- c("group_1",
+                      "group 2",
                      "comparison")
 
   return(out)
@@ -75,72 +75,30 @@ get_cell_draws <- function(model) {
   return(cell_draws)
 }
 
-select_cells <- function(model, definition, cmc) {
-  vars <- c()
-  ref_vars <- c()
-  ref_cols <- c()
-
-
-  if (cmc == FALSE) {
-
-    # find reference levels (dummy coding)
-    contrasts <- attr(brms::standata(model)$X, "contrasts")
-    for (def in definition) {
-      split_def <- stringr::str_split(def, " = ", simplify = T)
-      factor <- split_def[[1]]
-      level <- split_def[[2]]
-      if (rownames(contrasts[[factor]])[1] == level) {
-        ref_vars <- c(ref_vars, factor)
-      } else {
-        vars <- c(vars, stringr::str_c(factor, level))
-      }
-    }
-  } else if (cmc == TRUE) {
-    for (def in definition) {
-      split_def <- stringr::str_split(def, " = ", simplify = T)
-      factor <- split_def[[1]]
-      level <- split_def[[2]]
-      vars <- c(vars, stringr::str_c(factor, level))
-      }
-  }
-  
-
-  design_matrix <- brms::standata(model)$X %>%
-                                       tibble::as_tibble() %>%
-                                       tibble::rownames_to_column("cell")
-
-  out <- design_matrix %>%
-    tibble::as_tibble()
-
-  if (length(vars) != 0) {
-    out <- out %>%
-      dplyr::filter_at(.vars = vars,
-                .vars_predicate = ~ . == 1)
-  }
-
-  if (length(ref_vars) != 0) {
-
-    ref_cols <- design_matrix %>%
-      dplyr::select(starts_with(ref_vars)) %>%
-      colnames()
-
-    out <- out %>%
-      dplyr::filter_at(.vars = ref_cols,
-                       .vars_predicate = ~ . == 0)
-    }
-  return(unique(out))
-
-}
-
-
-combined_draws <- function(model, cell_definition, cmc) {
-  cells <- select_cells(model, cell_definition, cmc)
+combined_draws <- function(model, cell_definition) {
+  cells <- get_cell_definitions(model) %>%
+    filter(cell_definition) %>%
+    rownames()
 
   combined <- get_cell_draws(model)
 
-  out <- combined[as.numeric(cells$cell)] %>%
+  out <- combined[as.numeric(cells)] %>%
     rowMeans() %>%
     as_tibble()
 
   return(out)
 }
+
+
+get_cell_definitions <- function(model) {
+
+  y <- as.character(brms::parse_bf(formula(model))$allvars[[2]])
+
+  cell_defs <- bind_cols(m$data,
+                         as.data.frame(standata(m)$X)) %>%
+    select(-matches(match = y))
+
+
+
+  return(cell_defs)
+  }
