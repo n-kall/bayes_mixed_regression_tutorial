@@ -23,12 +23,14 @@
 #' @export
 compare_cells <- function(model, lower_group, higher_group) {
 
+  lower_group <- dplyr::enquos(lower_group)
+  higher_group <- dplyr::enquos(higher_group)
 
   #TODO: Allow for 'OR' operator when specifying levels
 
   lower_draws <- combined_draws(model, lower_group) %>%
     rename(lower = value)
-  higher_draws <- combined_draws(model, higher_group) %>%
+  higher_draws <- filter_draws(model, higher_group) %>%
     rename(higher = value)
   out <- lower_draws %>%
     bind_cols(higher_draws) %>%
@@ -36,7 +38,7 @@ compare_cells <- function(model, lower_group, higher_group) {
 
    colnames(out) <- c("group_1",
                       "group 2",
-                     "comparison")
+                      "comparison")
 
   return(out)
 }
@@ -75,30 +77,38 @@ get_cell_draws <- function(model) {
   return(cell_draws)
 }
 
-combined_draws <- function(model, cell_definition) {
+filter_draws <- function(model, ...) {
+
+  cell_definition <- dplyr::enquos(...)
+
   cells <- get_cell_definitions(model) %>%
-    filter(cell_definition) %>%
-    rownames()
+    filter(!!! cell_definition) %>%
+    select(rowname) %>%
+    pull()
 
   combined <- get_cell_draws(model)
 
-  out <- combined[as.numeric(cells)] %>%
+  filtered_draws <- combined[as.numeric(cells)] %>%
     rowMeans() %>%
-    as_tibble()
+    tibble::as_tibble()
 
-  return(out)
+  # create a name for the group
+  y <- stringr::str_c(as.character(cell_definition), collapse = ",") %>%
+    stringr::str_remove_all("~") %>%
+    stringr::str_remove_all('\"')
+
+  colnames(filtered_draws) <- y
+
+  return(filtered_draws)
 }
 
 
 get_cell_definitions <- function(model) {
 
   y <- as.character(brms::parse_bf(formula(model))$allvars[[2]])
-
   cell_defs <- bind_cols(m$data,
                          as.data.frame(standata(m)$X)) %>%
-    select(-matches(match = y))
-
-
-
+    tibble::rownames_to_column() %>%
+    dplyr::select(-matches(match = y))
   return(cell_defs)
   }
