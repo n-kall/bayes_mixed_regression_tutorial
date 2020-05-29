@@ -16,9 +16,11 @@ Imports:
     dplyr,
     posterior,
     stringr,
-    magrittr
+    magrittr,
+    rlang (>= 0.1.2)
 Suggests: 
     knitr,
     rmarkdown,
-    testthat
+    testthat,
+    roxygen2
 VignetteBuilder: knitr
