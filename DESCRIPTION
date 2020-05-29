@@ -17,7 +17,9 @@ Imports:
     posterior,
     stringr,
     magrittr,
-    rlang (>= 0.1.2)
+    rlang (>= 0.1.2),
+    tibble,
+    checkmate
 Suggests: 
     knitr,
     rmarkdown,

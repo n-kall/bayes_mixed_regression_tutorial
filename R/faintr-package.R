@@ -28,4 +28,7 @@
 #' \code{\link{brm}},
 #' \code{\link{brmsfit}}
 #'
+## usethis namespace: start
+#' @importFrom tibble tibble
+## usethis namespace: end
 NULL

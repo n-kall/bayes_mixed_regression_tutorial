@@ -1,51 +1,12 @@
-#' Compare means of two subsets of factorial design cells
-#'
-#' This function takes a brms model fit for a factorial design and a
-#' specification of two groups (subsets of design cells) to compare.
-#' A group is specified as a named list, specifiying the factors and
-#' their levels which to include in the group.  It outputs the
-#' posterior samples of the 'higher' and 'lower' subsets of cells,
-#' and the comparison 'higher - lower'.
-#'
-#' @param model a brmsfit
-#' @param higher named list specifying levels of factors that specify
-#'   the cell hypothesised to yield a higher dependent variable value
-#' @param lower named list specifying levels of factors that specify
-#'   the cell hypothesised to yield a lower dependent variable value
-#' @return a tibble with posterior draws from each of the groups and
-#'   the comparison
-#' @examples
-#' m <- brm(pitch ~ gender * context, politeness)
-#' compare_cells(
-#'   model = m,
-#'   lower = c("gender = M", "context = inf"),
-#'   higher = c("gender = F", "context = pol")
-#' )
-#' @export
-compare_cells <- function(model, lower_group, higher_group) {
-  lower_group <- dplyr::enquos(lower_group)
-  higher_group <- dplyr::enquos(higher_group)
-
-  # TODO: Allow for 'OR' operator when specifying levels
-
-  lower_draws <- combined_draws(model, lower_group) %>%
-    rename(lower = value)
-  higher_draws <- filter_draws(model, higher_group) %>%
-    rename(higher = value)
-  out <- lower_draws %>%
-    bind_cols(higher_draws) %>%
-    mutate(comparison = higher - lower)
-
-  colnames(out) <- c(
-    "group_1",
-    "group 2",
-    "comparison"
-  )
-
-  return(out)
-}
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @param model a model of class `brmsfit`
+##' @return a [tibble][tibble::tibble-package]
 get_cell_draws <- function(model) {
+
+  checkmate::assert_class(model, "brmsfit")
+  
   design_matrix <- brms::standata(model)$X
 
   draws <- posterior::as_draws_df(as.data.frame(model))
@@ -76,8 +37,15 @@ get_cell_draws <- function(model) {
 
   return(cell_draws)
 }
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @param model a model of class `brmsfit`
+##' @param ... specification of group
+##' @return a [tibble][tibble::tibble-package]
 filter_draws <- function(model, ...) {
+  checkmate::assert_class(model, "brmsfit")
+    
   cell_definition <- dplyr::enquos(...)
 
   cells <- get_cell_definitions(model) %>%
@@ -101,8 +69,14 @@ filter_draws <- function(model, ...) {
   return(filtered_draws)
 }
 
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title
+##' @param model
+##' @return a [tibble][tibble::tibble-package]
 get_cell_definitions <- function(model) {
+  checkmate::assert_class(model, "brmsfit")
   y <- as.character(brms::parse_bf(formula(model))$allvars[[2]])
   cell_defs <- bind_cols(
     m$data,
