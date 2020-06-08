@@ -36,11 +36,12 @@ get_cell_draws <- function(model) {
   return(cell_draws)
 }
 
-##' Filter draws to choose the specified design cell
+##' Filter draws to choose a specific group of design cells
 ##'
 ##' @param model a model of class `brmsfit`
 ##' @param ... specification of group
 ##' @return a [tibble][tibble::tibble-package]
+##' @export
 filter_draws <- function(model, ...) {
   checkmate::assert_class(model, "brmsfit")
 
