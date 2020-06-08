@@ -1,12 +1,10 @@
-##' .. content for \description{} (no empty lines) ..
-##'
-##' .. content for \details{} ..
+##' Calculate draws for all cells of design matrix
 ##' @param model a model of class `brmsfit`
 ##' @return a [tibble][tibble::tibble-package]
 get_cell_draws <- function(model) {
 
   checkmate::assert_class(model, "brmsfit")
-  
+
   design_matrix <- brms::standata(model)$X
 
   draws <- posterior::as_draws_df(as.data.frame(model))
@@ -37,15 +35,15 @@ get_cell_draws <- function(model) {
 
   return(cell_draws)
 }
-##' .. content for \description{} (no empty lines) ..
+
+##' Filter draws to choose the specified design cell
 ##'
-##' .. content for \details{} ..
 ##' @param model a model of class `brmsfit`
 ##' @param ... specification of group
 ##' @return a [tibble][tibble::tibble-package]
 filter_draws <- function(model, ...) {
   checkmate::assert_class(model, "brmsfit")
-    
+
   cell_definition <- dplyr::enquos(...)
 
   cells <- get_cell_definitions(model) %>%
@@ -69,10 +67,8 @@ filter_draws <- function(model, ...) {
   return(filtered_draws)
 }
 
-##' .. content for \description{} (no empty lines) ..
+##' Get all definitions of cells
 ##'
-##' .. content for \details{} ..
-##' @title
 ##' @param model
 ##' @return a [tibble][tibble::tibble-package]
 get_cell_definitions <- function(model) {
