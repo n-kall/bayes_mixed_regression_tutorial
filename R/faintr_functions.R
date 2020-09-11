@@ -1,6 +1,7 @@
 ##' Calculate draws for all cells of design matrix
 ##' @param model a model of class `brmsfit`
 ##' @return a [tibble][tibble::tibble-package]
+##' @export
 get_cell_draws <- function(model) {
 
   checkmate::assert_class(model, "brmsfit")
@@ -11,27 +12,34 @@ get_cell_draws <- function(model) {
 
   cell_draws <- c()
 
-  for (c in 1:NROW(design_matrix)) {
+  for (cell in 1:NROW(design_matrix)) {
     cell_def <- design_matrix %>%
-      as_tibble() %>%
-      slice(c)
+      tibble::as_tibble() %>%
+      dplyr::slice(cell)
 
     cell_def_cols <- c()
 
     for (col in colnames(cell_def)) {
       if ((cell_def %>%
-        select(all_of(col)) %>%
-        pull()) == 1) {
+        dplyr::select(all_of(col)) %>%
+        dplyr::pull()) == 1) {
         cell_def_cols <- c(cell_def_cols, col)
       }
     }
 
+    cell_name <- stringr::str_c("cell", cell)
+
+    new_cell_draw <- draws %>%
+      dplyr::select(stringr::str_c("b_", cell_def_cols)) %>%
+      summarise(!!cell_name := pmap_dbl(., sum))
+
     cell_draws <- cell_draws %>%
-      bind_cols(draws %>%
-        select(str_c("b_", cell_def_cols)) %>%
-        rowSums() %>%
-        as_tibble())
+      dplyr::bind_cols(
+        new_cell_draw
+      )
+
   }
+
 
   return(cell_draws)
 }
@@ -48,9 +56,9 @@ filter_draws <- function(model, ...) {
   cell_definition <- dplyr::enquos(...)
 
   cells <- get_cell_definitions(model) %>%
-    filter(!!!cell_definition) %>%
-    select(rowname) %>%
-    pull()
+    dplyr::filter(!!!cell_definition) %>%
+    dplyr::select(rowname) %>%
+    dplyr::pull()
 
   combined <- get_cell_draws(model)
 
@@ -72,10 +80,11 @@ filter_draws <- function(model, ...) {
 ##'
 ##' @param model
 ##' @return a [tibble][tibble::tibble-package]
+##' @export
 get_cell_definitions <- function(model) {
   checkmate::assert_class(model, "brmsfit")
-  y <- as.character(brms::parse_bf(formula(model))$allvars[[2]])
-  cell_defs <- bind_cols(
+  y <- as.character(brms::brmsterms(formula(model))$allvars[[2]])
+  cell_defs <- dplyr::bind_cols(
     m$data,
     as.data.frame(standata(m)$X)
   ) %>%
