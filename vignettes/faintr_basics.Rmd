@@ -39,7 +39,7 @@ Install the `faintr` package with `devtools` from GitHub:
 
 ```{r, eval = F}
 devtools::install_github(
-  "michael-franke/bayes_mixed_regression_tutorial/faintr",
+  "n-kall/faintr",
   build_vignettes = TRUE
 )
 library(faintr)
@@ -84,7 +84,7 @@ estimated coefficients:
 fixef(m_dummy)
 ```
 
-The reference cell is where `gender:F` and `context:inf`, so female
+The reference cell is where `gender == F` and `context == inf`, so female
 speakers in informal contexts. The estimated mean for the cell with
 data from male speakers in informal contexts is retrievable by adding
 the estimated coefficient `genderM` in the output above from the
@@ -96,13 +96,36 @@ the above. Although the fit of the regression model uses a particular
 reference cell for dummy-coding, other contrasts of relevance can be
 retrieved from the posterior samples. For example, if we want to
 compare two cell diagonally, say, male speakers in informal contexts
-against female speakers in polite contexts, we can do this:
+against female speakers in polite contexts, we can do this by first
+exracting the draws.
 
 ```{r }
-faintr::compare_cells(
-  model = m_dummy,
-  higher = c("gender = F", "context = pol"),
-  lower = c("gender = M", "context = pol")
-  )
+female_polite <- faintr::filter_draws(m_dummy, gender == "F", context == "pol")
+male_informal <- faintr::filter_draws(m_dummy, gender == "M", context == "inf")
+```
+
+We can then calculate and visualise the difference
+
+```{r }
+library(ggplot2)
+
+diff <- pull(female_polite) - pull(male_informal)
+
+mean(diff)
+
+qplot(diff, geom = "density")
+
+```
+
+Or we can plot the two posteriors for a visual comparison.
+
+```{r} 
+
+library(ggplot2)
+
+bind_cols(female_polite, male_informal) %>%
+  gather(key = "cell") %>%
+  ggplot(aes(x = value, color = cell, fill = cell)) +
+  geom_density(alpha = 0.5)
 
 ```
