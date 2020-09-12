@@ -85,8 +85,8 @@ get_cell_definitions <- function(model) {
   checkmate::assert_class(model, "brmsfit")
   y <- as.character(brms::brmsterms(formula(model))$allvars[[2]])
   cell_defs <- dplyr::bind_cols(
-    m$data,
-    as.data.frame(standata(m)$X)
+    model$data,
+    as.data.frame(standata(model)$X)
   ) %>%
     tibble::rownames_to_column() %>%
     dplyr::select(-matches(match = y))
