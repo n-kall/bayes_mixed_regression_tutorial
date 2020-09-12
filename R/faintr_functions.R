@@ -67,7 +67,7 @@ filter_draws <- function(model, ...) {
     tibble::as_tibble()
 
   # create a name for the group
-  y <- stringr::str_c(as.character(cell_definition), collapse = ",") %>%
+  y <- stringr::str_c(as.character(cell_definition), collapse = ", ") %>%
     stringr::str_remove_all("~") %>%
     stringr::str_remove_all('\"')
 
