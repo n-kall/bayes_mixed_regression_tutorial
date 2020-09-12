@@ -25,13 +25,10 @@ theme_set(theme_bw() + theme(plot.background=element_blank()) )
 
 The `faintr` package provides convenience function for the evaluation
 of a model fit, obtained with the `brms` package, for a Bayesian
-regression model for data from a factorial design. If the original
-model fit used (default) dummy coding of factors, the `faintr` package
-allows extraction of many more meaningful comparisons. For example, it
-is possible to directly compare the difference between cells which are
-not comparable by dummy coding, and it is also possible to compare
-means in sets of cells, so as to recover the outcomes of deviance
-coding.
+regression model for data from a factorial design. The `faintr`
+package allows extraction of many meaningful comparisons irrespective
+of the coding in the model. This is done by directly extracting the
+design matrix from the model.
 
 # Installation
 
@@ -97,14 +94,15 @@ reference cell for dummy-coding, other contrasts of relevance can be
 retrieved from the posterior samples. For example, if we want to
 compare two cell diagonally, say, male speakers in informal contexts
 against female speakers in polite contexts, we can do this by first
-exracting the draws.
+filtering the specified draws.
 
 ```{r }
 female_polite <- faintr::filter_draws(m_dummy, gender == "F", context == "pol")
 male_informal <- faintr::filter_draws(m_dummy, gender == "M", context == "inf")
+
 ```
 
-We can then calculate and visualise the difference
+We can then calculate and visualise the difference between the specified groups.
 
 ```{r }
 library(ggplot2)
@@ -124,8 +122,39 @@ Or we can plot the two posteriors for a visual comparison.
 library(ggplot2)
 
 bind_cols(female_polite, male_informal) %>%
-  gather(key = "cell") %>%
-  ggplot(aes(x = value, color = cell, fill = cell)) +
+  gather(key = "group") %>%
+  ggplot(aes(x = value, color = group, fill = group)) +
+  geom_density(alpha = 0.5)
+
+```
+
+Alternatively, we could compare males and females over both
+contexts. This is done by leaving out the `context` variable from the
+specification.
+
+```{r }
+male <- faintr::filter_draws(m_dummy, gender == "M")
+female <- faintr::filter_draws(m_dummy, gender == "F")
+
+bind_cols(female, male) %>%
+  gather(key = "group") %>%
+  ggplot(aes(x = value, color = group, fill = group)) +
+  geom_density(alpha = 0.5)
+
+```
+
+This same procedure can be performed even if the model is created with
+treatment coding.
+
+```{r }
+m_trt <- brm(pitch ~ 0 + gender * context + (1 | subject + sentence), politeness)
+
+female_polite <- faintr::filter_draws(m_trt, gender == "F", context == "pol")
+male_informal <- faintr::filter_draws(m_trt, gender == "M", context == "inf")
+
+bind_cols(female_polite, male_informal) %>%
+  gather(key = "group") %>%
+  ggplot(aes(x = value, color = group, fill = group)) +
   geom_density(alpha = 0.5)
 
 ```

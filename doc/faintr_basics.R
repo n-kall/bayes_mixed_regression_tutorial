@@ -41,6 +41,7 @@ fixef(m_dummy)
 female_polite <- faintr::filter_draws(m_dummy, gender == "F", context == "pol")
 male_informal <- faintr::filter_draws(m_dummy, gender == "M", context == "inf")
 
+
 ## -----------------------------------------------------------------------------
 library(ggplot2)
 
@@ -56,8 +57,30 @@ qplot(diff, geom = "density")
 library(ggplot2)
 
 bind_cols(female_polite, male_informal) %>%
-  gather(key = "cell") %>%
-  ggplot(aes(x = value, color = cell, fill = cell)) +
+  gather(key = "group") %>%
+  ggplot(aes(x = value, color = group, fill = group)) +
+  geom_density(alpha = 0.5)
+
+
+## -----------------------------------------------------------------------------
+male <- faintr::filter_draws(m_dummy, gender == "M")
+female <- faintr::filter_draws(m_dummy, gender == "F")
+
+bind_cols(female, male) %>%
+  gather(key = "group") %>%
+  ggplot(aes(x = value, color = group, fill = group)) +
+  geom_density(alpha = 0.5)
+
+
+## -----------------------------------------------------------------------------
+m_trt <- brm(pitch ~ 0 + gender * context + (1 | subject + sentence), politeness)
+
+female_polite <- faintr::filter_draws(m_trt, gender == "F", context == "pol")
+male_informal <- faintr::filter_draws(m_trt, gender == "M", context == "inf")
+
+bind_cols(female_polite, male_informal) %>%
+  gather(key = "group") %>%
+  ggplot(aes(x = value, color = group, fill = group)) +
   geom_density(alpha = 0.5)
 
 
