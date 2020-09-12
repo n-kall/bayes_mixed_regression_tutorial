@@ -72,9 +72,13 @@ bind_cols(female, male) %>%
   geom_density(alpha = 0.5)
 
 
-## -----------------------------------------------------------------------------
+## ---- error=FALSE, warning=FALSE, message=FALSE, results="hide"---------------
 m_trt <- brm(pitch ~ 0 + gender * context + (1 | subject + sentence), politeness)
 
+## -----------------------------------------------------------------------------
+fixef(m_trt)
+
+## -----------------------------------------------------------------------------
 female_polite <- faintr::filter_draws(m_trt, gender == "F", context == "pol")
 male_informal <- faintr::filter_draws(m_trt, gender == "M", context == "inf")
 

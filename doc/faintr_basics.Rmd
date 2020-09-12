@@ -146,9 +146,15 @@ bind_cols(female, male) %>%
 This same procedure can be performed even if the model is created with
 treatment coding.
 
-```{r }
+```{r, error=FALSE, warning=FALSE, message=FALSE, results="hide"}
 m_trt <- brm(pitch ~ 0 + gender * context + (1 | subject + sentence), politeness)
+```
 
+```{r }
+fixef(m_trt)
+```
+
+```{r }
 female_polite <- faintr::filter_draws(m_trt, gender == "F", context == "pol")
 male_informal <- faintr::filter_draws(m_trt, gender == "M", context == "inf")
 
