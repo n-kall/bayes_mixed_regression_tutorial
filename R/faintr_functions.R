@@ -6,11 +6,14 @@ get_cell_draws <- function(model) {
 
   checkmate::assert_class(model, "brmsfit")
 
+  # extract design matrix
   design_matrix <- brms::standata(model)$X
 
+  # extract posterior draws
   draws <- posterior::as_draws_df(as.data.frame(model))
 
   cell_draws <- c()
+
 
   for (cell in 1:NROW(design_matrix)) {
     cell_def <- design_matrix %>%
@@ -62,6 +65,7 @@ filter_draws <- function(model, ...) {
 
   combined <- get_cell_draws(model)
 
+  # filter the draws based on the definition
   filtered_draws <- combined[as.numeric(cells)] %>%
     rowMeans() %>%
     tibble::as_tibble()
@@ -83,11 +87,16 @@ filter_draws <- function(model, ...) {
 ##' @export
 get_cell_definitions <- function(model) {
   checkmate::assert_class(model, "brmsfit")
+
+  # extract dependent variable
   y <- as.character(brms::brmsterms(formula(model))$allvars[[2]])
+
+  # concatenate design matrix and actual data
   cell_defs <- dplyr::bind_cols(
     model$data,
     as.data.frame(standata(model)$X)
   ) %>%
+    # select the columns except for dependent variable
     tibble::rownames_to_column() %>%
     dplyr::select(-matches(match = y))
   return(cell_defs)
