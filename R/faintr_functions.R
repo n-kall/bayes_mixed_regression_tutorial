@@ -14,7 +14,7 @@ get_cell_draws <- function(model) {
 
   cell_draws <- c()
 
-
+  # loop over each row of design matrix
   for (cell in 1:NROW(design_matrix)) {
     cell_def <- design_matrix %>%
       tibble::as_tibble() %>%
@@ -22,6 +22,7 @@ get_cell_draws <- function(model) {
 
     cell_def_cols <- c()
 
+    # get columns that specify cell
     for (col in colnames(cell_def)) {
       if ((cell_def %>%
         dplyr::select(all_of(col)) %>%
@@ -30,20 +31,21 @@ get_cell_draws <- function(model) {
       }
     }
 
+    # create cell number
     cell_name <- stringr::str_c("cell", cell)
 
+    # select columns in cell specification and sum the rows
     new_cell_draw <- draws %>%
       dplyr::select(stringr::str_c("b_", cell_def_cols)) %>%
       summarise(!!cell_name := pmap_dbl(., sum))
 
+    # bind all new cell draws
     cell_draws <- cell_draws %>%
       dplyr::bind_cols(
         new_cell_draw
       )
 
   }
-
-
   return(cell_draws)
 }
 
@@ -58,15 +60,18 @@ filter_draws <- function(model, ...) {
 
   cell_definition <- dplyr::enquos(...)
 
-  cells <- get_cell_definitions(model) %>%
+  # get cell numbers based on specification
+  cell_numbers <- get_cell_definitions(model) %>%
     dplyr::filter(!!!cell_definition) %>%
     dplyr::select(rowname) %>%
     dplyr::pull()
 
-  combined <- get_cell_draws(model)
 
-  # filter the draws based on the definition
-  filtered_draws <- combined[as.numeric(cells)] %>%
+  # get all cell draws
+  all_cell_draws <- get_cell_draws(model)
+  
+  # filter the draws by choosing the appropriate columns based on cell numbers
+  filtered_draws <- all_cell_draws[as.numeric(cells_numbers)] %>%
     rowMeans() %>%
     tibble::as_tibble()
 
