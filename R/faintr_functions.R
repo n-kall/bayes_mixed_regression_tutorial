@@ -63,7 +63,7 @@ filter_draws <- function(model, ...) {
   # get cell numbers based on specification
   cell_numbers <- get_cell_definitions(model) %>%
     dplyr::filter(!!!cell_definition) %>%
-    dplyr::select(rowname) %>%
+    dplyr::select(cell) %>%
     dplyr::pull()
 
 
@@ -102,7 +102,7 @@ get_cell_definitions <- function(model) {
     as.data.frame(standata(model)$X)
   ) %>%
     # select the columns except for dependent variable
-    tibble::rownames_to_column() %>%
+    tibble::rownames_to_column(var = "cell") %>%
     dplyr::select(-matches(match = y))
   return(cell_defs)
 }
