@@ -99,7 +99,7 @@ get_cell_definitions <- function(model) {
   # concatenate design matrix and actual data
   cell_defs <- dplyr::bind_cols(
     model$data,
-    as.data.frame(standata(model)$X)
+    as.data.frame(brms::standata(model)$X)
   ) %>%
     # select the columns except for dependent variable
     tibble::rownames_to_column(var = "cell") %>%
