@@ -37,7 +37,7 @@ get_cell_draws <- function(model) {
     # select columns in cell specification and sum the rows
     new_cell_draw <- draws %>%
       dplyr::select(stringr::str_c("b_", cell_def_cols)) %>%
-      summarise(!!cell_name := pmap_dbl(., sum))
+      dplyr::summarise(!!cell_name := purrr::pmap_dbl(., sum))
 
     # bind all new cell draws
     cell_draws <- cell_draws %>%
@@ -71,7 +71,7 @@ filter_draws <- function(model, ...) {
   all_cell_draws <- get_cell_draws(model)
   
   # filter the draws by choosing the appropriate columns based on cell numbers
-  filtered_draws <- all_cell_draws[as.numeric(cells_numbers)] %>%
+  filtered_draws <- all_cell_draws[as.numeric(cell_numbers)] %>%
     rowMeans() %>%
     tibble::as_tibble()
 
