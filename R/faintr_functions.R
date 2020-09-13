@@ -104,5 +104,5 @@ get_cell_definitions <- function(model) {
     # select the columns except for dependent variable
     tibble::rownames_to_column(var = "cell") %>%
     dplyr::select(-matches(match = y))
-  return(cell_defs)
+  return(tibble::as_tibble(cell_defs))
 }
