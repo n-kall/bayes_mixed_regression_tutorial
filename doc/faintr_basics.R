@@ -38,8 +38,23 @@ m_dummy <- brm(pitch ~ gender * context + (1 | subject + sentence), politeness)
 fixef(m_dummy)
 
 ## -----------------------------------------------------------------------------
-female_polite <- faintr::filter_draws(m_dummy, gender == "F", context == "pol")
-male_informal <- faintr::filter_draws(m_dummy, gender == "M", context == "inf")
+cell_definitions <- faintr::get_cell_definitions(m_dummy)
+
+cell_draws <- faintr::get_cell_draws(m_dummy)
+
+female_polite <- faintr::extract_draws(
+  cell_definitions,
+  cell_draws,
+  gender == "F",
+  context == "pol"
+)
+
+male_informal <- faintr::extract_draws(
+  cell_definitions,
+  cell_draws,
+  gender == "M",
+  context == "inf"
+)
 
 
 ## -----------------------------------------------------------------------------
@@ -63,10 +78,19 @@ bind_cols(female_polite, male_informal) %>%
 
 
 ## -----------------------------------------------------------------------------
-male <- faintr::filter_draws(m_dummy, gender == "M")
-female <- faintr::filter_draws(m_dummy, gender == "F")
+female_overall <- faintr::extract_draws(
+  cell_definitions,
+  cell_draws,
+  gender == "F"
+)
 
-bind_cols(female, male) %>%
+male_overall <- faintr::extract_draws(
+  cell_definitions,
+  cell_draws,
+  gender == "M"
+)
+
+bind_cols(female_overall, male_overall) %>%
   gather(key = "group") %>%
   ggplot(aes(x = value, color = group, fill = group)) +
   geom_density(alpha = 0.5)
@@ -79,8 +103,23 @@ m_trt <- brm(pitch ~ 0 + gender * context + (1 | subject + sentence), politeness
 fixef(m_trt)
 
 ## -----------------------------------------------------------------------------
-female_polite <- faintr::filter_draws(m_trt, gender == "F", context == "pol")
-male_informal <- faintr::filter_draws(m_trt, gender == "M", context == "inf")
+cell_definitions <- faintr::get_cell_definitions(m_trt)
+
+cell_draws <- faintr::get_cell_draws(m_trt)
+
+female_polite <- faintr::extract_draws(
+  cell_definitions,
+  cell_draws,
+  gender == "F",
+  context == "pol"
+)
+
+male_informal <- faintr::extract_draws(
+  cell_definitions,
+  cell_draws,
+  gender == "M",
+  context == "inf"
+)
 
 bind_cols(female_polite, male_informal) %>%
   gather(key = "group") %>%

@@ -49,40 +49,40 @@ get_cell_draws <- function(model) {
   return(cell_draws)
 }
 
-##' Filter draws to choose a specific group of design cells
+##' Extract draws for a specified group of cells
 ##'
-##' @param model a model of class `brmsfit`
-##' @param ... specification of group
-##' @return a [tibble][tibble::tibble-package]
+##' @param cell_draws 
+##' @param cell_definitions 
+##' @param ... Specification of group
+##' @return tibble
 ##' @export
-filter_draws <- function(model, ...) {
-  checkmate::assert_class(model, "brmsfit")
 
-  cell_definition <- dplyr::enquos(...)
+extract_draws <- function(cell_definitions, cell_draws, ...) {
 
+
+  group_spec <- dplyr::enquos(...)
+
+  
   # get cell numbers based on specification
-  cell_numbers <- get_cell_definitions(model) %>%
-    dplyr::filter(!!!cell_definition) %>%
+  cell_numbers <- cell_definitions %>%
+    dplyr::filter(!!!group_spec) %>%
     dplyr::select(cell) %>%
     dplyr::pull()
 
-
-  # get all cell draws
-  all_cell_draws <- get_cell_draws(model)
-  
   # filter the draws by choosing the appropriate columns based on cell numbers
-  filtered_draws <- all_cell_draws[as.numeric(cell_numbers)] %>%
+  filtered_draws <- cell_draws[as.numeric(cell_numbers)] %>%
     rowMeans() %>%
     tibble::as_tibble()
 
   # create a name for the group
-  y <- stringr::str_c(as.character(cell_definition), collapse = ", ") %>%
+  y <- stringr::str_c(as.character(group_spec), collapse = ", ") %>%
     stringr::str_remove_all("~") %>%
     stringr::str_remove_all('\"')
 
   colnames(filtered_draws) <- y
 
   return(filtered_draws)
+
 }
 
 ##' Get all definitions of cells
